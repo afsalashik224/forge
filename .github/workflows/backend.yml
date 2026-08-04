@@ -53,5 +53,6 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/forge
+            git pull origin main
             chmod +x scripts/deploy.sh
             ./scripts/deploy.sh

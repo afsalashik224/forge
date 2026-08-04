@@ -4,12 +4,10 @@ set -e
 
 echo "=== Deploying Forge ==="
 
-cd ~/forge
+cd ~/forge/backend
 
-echo "Pulling latest code..."
-git pull origin main
-
-cd backend
+echo "Working directory:"
+pwd
 
 echo "Stopping old container..."
 docker stop forge || true
@@ -22,8 +20,9 @@ docker build -t forge-backend .
 
 echo "Starting new container..."
 docker run -d \
-  --name forge \
-  -p 5000:5000 \
-  forge-backend
+    --name forge \
+    --restart unless-stopped \
+    -p 5000:5000 \
+    forge-backend
 
 echo "Deployment completed."
