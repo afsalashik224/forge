@@ -37,3 +37,20 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build -t forge-backend .
+  
+  deploy:
+    name: Deploy to EC2
+    needs: backend-ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/forge
+            chmod +x scripts/deploy.sh
+            ./scripts/deploy.sh
