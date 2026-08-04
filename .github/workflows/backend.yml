@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
@@ -37,7 +38,7 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build -t forge-backend .
-  
+
   deploy:
     name: Deploy to EC2
     needs: backend-ci
