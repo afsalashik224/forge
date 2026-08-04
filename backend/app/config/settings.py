@@ -10,7 +10,7 @@ class Settings:
     """Application configuration."""
 
     APP_NAME = os.getenv("APP_NAME", "Forge")
-    APP_VERSION = os.getenv("APP_VERSION", "0.1.0")
+    APP_VERSION = os.getenv("APP_VERSION", "0.1.1")
 
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
