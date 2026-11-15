@@ -259,7 +259,29 @@ p {
   padding: 16px;
 }
 
+.mobile-menu-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 6px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-menu-btn:hover {
+  background: var(--surface-secondary);
+}
+
 @media (max-width: 768px) {
+  .desktop-sidebar-container {
+    display: none;
+  }
+  .mobile-menu-btn {
+    display: flex;
+  }
   .search-text-label {
     display: none;
   }

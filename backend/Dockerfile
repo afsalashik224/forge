@@ -8,6 +8,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+ENV DATABASE_URL=sqlite:////app/instance/forge.db
+
+VOLUME ["/app/instance"]
+
 EXPOSE 5000
 
-CMD ["python", "-m", "app.app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "app.app:app"]
