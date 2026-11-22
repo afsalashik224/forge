@@ -9,6 +9,8 @@ export default function KnowledgeWorkspace({
   healthStatus, 
   onSelectConcept, 
   onOpenCreateModal, 
+  onEditConcept,
+  onDeleteConcept,
   setActiveTab,
   loading
 }) {
@@ -107,7 +109,7 @@ export default function KnowledgeWorkspace({
 
       {/* Main Grid: Knowledge Graph Widget + Recently Forged */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-        <KnowledgeGraphWidget concepts={concepts} />
+        <KnowledgeGraphWidget />
 
         {/* Recently Forged Section */}
         <div>
@@ -154,6 +156,8 @@ export default function KnowledgeWorkspace({
                   key={c.id} 
                   concept={c} 
                   onClick={() => onSelectConcept(c)} 
+                  onEdit={onEditConcept}
+                  onDelete={onDeleteConcept}
                 />
               ))}
             </div>

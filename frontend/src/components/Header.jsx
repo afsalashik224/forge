@@ -1,10 +1,11 @@
 import React from 'react';
-import { Search, Plus, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Plus, CheckCircle2, AlertCircle, Menu } from 'lucide-react';
 
 export default function Header({ 
   activeTab, 
   onOpenCreateModal, 
   onOpenCommandPalette, 
+  onOpenMobileSidebar,
   healthStatus 
 }) {
   const getTabTitle = (tab) => {
@@ -35,7 +36,14 @@ export default function Header({
       zIndex: 20
     }}>
       {/* Clean Breadcrumb & Page Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button
+          className="mobile-menu-btn"
+          onClick={onOpenMobileSidebar}
+          aria-label="Open navigation menu"
+        >
+          <Menu size={16} />
+        </button>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Forge /</span>
         <h2 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
           {getTabTitle(activeTab)}

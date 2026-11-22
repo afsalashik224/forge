@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Network } from 'lucide-react';
 
-export default function KnowledgeGraphWidget({ concepts }) {
+export default function KnowledgeGraphWidget() {
   const [selectedNode, setSelectedNode] = useState(null);
 
   const defaultNodes = [

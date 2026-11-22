@@ -5,3 +5,11 @@ instance
 .git
 .gitignore
 .vscode
+.env
+.env.*
+tests
+migrations
+.pytest_cache
+requirements-dev.txt
+*.db
+*.db-*

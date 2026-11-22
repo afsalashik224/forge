@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
-import { Search, Plus, Grid, List, BookOpen } from 'lucide-react';
+import { Search, Plus, Grid, List, BookOpen, Edit3, Trash2 } from 'lucide-react';
 import ConceptCard from '../components/ConceptCard';
 import SkeletonCard from '../components/SkeletonCard';
 
-export default function ForgeLibrary({ concepts, onSelectConcept, onOpenCreateModal, loading, error }) {
+export default function ForgeLibrary({ 
+  concepts, 
+  onSelectConcept, 
+  onOpenCreateModal, 
+  onEditConcept, 
+  onDeleteConcept, 
+  loading, 
+  error 
+}) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState('grid');
@@ -180,7 +188,13 @@ export default function ForgeLibrary({ concepts, onSelectConcept, onOpenCreateMo
           gap: '20px'
         }}>
           {filtered.map((c) => (
-            <ConceptCard key={c.id} concept={c} onClick={() => onSelectConcept(c)} />
+            <ConceptCard 
+              key={c.id} 
+              concept={c} 
+              onClick={() => onSelectConcept(c)} 
+              onEdit={onEditConcept}
+              onDelete={onDeleteConcept}
+            />
           ))}
         </div>
       ) : (
@@ -209,8 +223,42 @@ export default function ForgeLibrary({ concepts, onSelectConcept, onOpenCreateMo
                   </span>
                 </div>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                ID #{c.id}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  ID #{c.id}
+                </div>
+                {onEditConcept && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditConcept(c);
+                    }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                    title="Edit concept"
+                    aria-label="Edit concept"
+                  >
+                    <Edit3 size={14} />
+                  </button>
+                )}
+                {onDeleteConcept && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteConcept(c);
+                    }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                    title="Delete concept"
+                    aria-label="Delete concept"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
             </div>
           ))}

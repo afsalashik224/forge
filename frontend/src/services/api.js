@@ -74,3 +74,41 @@ export async function createConcept(payload) {
     throw error;
   }
 }
+
+export async function updateConcept(slug, payload) {
+  try {
+    const res = await fetch(`/api/concepts/${encodeURIComponent(slug)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server returned error status ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`Failed to update concept '${slug}':`, error);
+    throw error;
+  }
+}
+
+export async function deleteConcept(slug) {
+  try {
+    const res = await fetch(`/api/concepts/${encodeURIComponent(slug)}`, {
+      method: 'DELETE',
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server returned error status ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`Failed to delete concept '${slug}':`, error);
+    throw error;
+  }
+}

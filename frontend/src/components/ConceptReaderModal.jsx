@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { X, BookOpen, Tag, Layers, AlertCircle } from 'lucide-react';
+import { X, BookOpen, Tag, Layers, AlertCircle, Edit3, Trash2 } from 'lucide-react';
 import { fetchConceptBySlug } from '../services/api';
 
-export default function ConceptReaderModal({ concept, onClose }) {
+export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete }) {
   const [fullConcept, setFullConcept] = useState(concept);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -18,22 +18,31 @@ export default function ConceptReaderModal({ concept, onClose }) {
   }, [concept, onClose]);
 
   useEffect(() => {
+    let isCurrent = true;
     if (concept?.slug) {
       setLoading(true);
       setError(null);
+      setFullConcept(concept);
       fetchConceptBySlug(concept.slug)
         .then((data) => {
+          if (!isCurrent) return;
           if (data) setFullConcept(data);
           else setFullConcept(concept);
           setLoading(false);
         })
         .catch((err) => {
+          if (!isCurrent) return;
           console.warn("Reader modal error:", err);
           setError("Failed to fetch updated concept details. Displaying cached version.");
           setFullConcept(concept);
           setLoading(false);
         });
+    } else {
+      setFullConcept(null);
     }
+    return () => {
+      isCurrent = false;
+    };
   }, [concept]);
 
   if (!concept) return null;
@@ -193,7 +202,43 @@ export default function ConceptReaderModal({ concept, onClose }) {
           fontSize: '0.75rem',
           color: 'var(--text-muted)'
         }}>
-          <span>Forge Knowledge Reader</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(fullConcept || concept)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  color: '#F87171',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Delete concept"
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
+              </button>
+            )}
+            {onEdit && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => onEdit(fullConcept || concept)}
+                style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Edit concept"
+              >
+                <Edit3 size={13} />
+                <span>Edit</span>
+              </button>
+            )}
+          </div>
           <button className="btn-secondary" onClick={onClose}>
             Close Reader
           </button>

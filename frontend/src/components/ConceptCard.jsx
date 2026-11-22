@@ -1,7 +1,7 @@
 import React from 'react';
-import { BookOpen, ExternalLink, Tag } from 'lucide-react';
+import { BookOpen, ExternalLink, Tag, Edit3, Trash2 } from 'lucide-react';
 
-export default function ConceptCard({ concept, onClick }) {
+export default function ConceptCard({ concept, onClick, onEdit, onDelete }) {
   return (
     <div 
       className="matte-card matte-card-interactive"
@@ -78,7 +78,58 @@ export default function ConceptCard({ concept, onClick }) {
           <BookOpen size={13} color="var(--emerald-primary)" />
           <span>Read concept</span>
         </div>
-        <ExternalLink size={13} color="var(--text-muted)" />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(concept);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '2px',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+              title="Edit concept"
+              aria-label="Edit concept"
+            >
+              <Edit3 size={13} />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(concept);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '2px',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+              title="Delete concept"
+              aria-label="Delete concept"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+          <ExternalLink size={13} color="var(--text-muted)" />
+        </div>
       </div>
     </div>
   );

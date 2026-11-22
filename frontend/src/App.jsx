@@ -3,6 +3,8 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import CommandPalette from './components/CommandPalette';
 import CreateConceptModal from './components/CreateConceptModal';
+import EditConceptModal from './components/EditConceptModal';
+import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import ConceptReaderModal from './components/ConceptReaderModal';
 import Toast from './components/Toast';
 
@@ -22,8 +24,11 @@ export default function App() {
   const [error, setError] = useState(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingConcept, setEditingConcept] = useState(null);
+  const [deletingConcept, setDeletingConcept] = useState(null);
   const [selectedConcept, setSelectedConcept] = useState(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const [toast, setToast] = useState({ message: '', type: 'success' });
 
@@ -50,6 +55,22 @@ export default function App() {
     }
   };
 
+  const handleConceptUpdated = (updatedConcept) => {
+    loadData();
+    // Propagate updated data and slug changes to open reader modal if active
+    if (selectedConcept && (selectedConcept.id === updatedConcept.id || selectedConcept.slug === updatedConcept.slug)) {
+      setSelectedConcept(updatedConcept);
+    }
+  };
+
+  const handleConceptDeleted = (deletedConcept) => {
+    loadData();
+    // If deleted concept was open in reader, close reader modal
+    if (selectedConcept && (selectedConcept.id === deletedConcept.id || selectedConcept.slug === deletedConcept.slug)) {
+      setSelectedConcept(null);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -61,6 +82,8 @@ export default function App() {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         conceptCount={concepts.length}
+        isMobileOpen={isMobileOpen}
+        onCloseMobile={() => setIsMobileOpen(false)}
       />
 
       {/* Right Content Area Pane */}
@@ -69,6 +92,7 @@ export default function App() {
           activeTab={activeTab}
           onOpenCreateModal={() => setIsCreateModalOpen(true)}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onOpenMobileSidebar={() => setIsMobileOpen(true)}
           healthStatus={healthStatus}
         />
 
@@ -80,6 +104,8 @@ export default function App() {
               healthStatus={healthStatus}
               onSelectConcept={setSelectedConcept}
               onOpenCreateModal={() => setIsCreateModalOpen(true)}
+              onEditConcept={setEditingConcept}
+              onDeleteConcept={setDeletingConcept}
               setActiveTab={setActiveTab}
               loading={loading}
             />
@@ -90,6 +116,8 @@ export default function App() {
               concepts={concepts}
               onSelectConcept={setSelectedConcept}
               onOpenCreateModal={() => setIsCreateModalOpen(true)}
+              onEditConcept={setEditingConcept}
+              onDeleteConcept={setDeletingConcept}
               loading={loading}
               error={error}
             />
@@ -113,9 +141,27 @@ export default function App() {
         showToast={showToast}
       />
 
+      <EditConceptModal 
+        isOpen={!!editingConcept}
+        concept={editingConcept}
+        onClose={() => setEditingConcept(null)}
+        onUpdated={handleConceptUpdated}
+        showToast={showToast}
+      />
+
+      <DeleteConfirmationModal 
+        isOpen={!!deletingConcept}
+        concept={deletingConcept}
+        onClose={() => setDeletingConcept(null)}
+        onDeleted={handleConceptDeleted}
+        showToast={showToast}
+      />
+
       <ConceptReaderModal 
         concept={selectedConcept}
         onClose={() => setSelectedConcept(null)}
+        onEdit={setEditingConcept}
+        onDelete={setDeletingConcept}
       />
 
       <CommandPalette 
