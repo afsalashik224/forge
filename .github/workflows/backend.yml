@@ -46,8 +46,8 @@ jobs:
 
       - name: Verify App Initialization
         env:
-          DATABASE_URL: sqlite:///:memory:
-          SECRET_KEY: ci-test-key
+          DATABASE_URL: "sqlite:///:memory:"
+          SECRET_KEY: "ci-test-key"
         run: |
           python -c "from app import create_app; app = create_app(); print('App initialized successfully')"
 
