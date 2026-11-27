@@ -1,25 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit3, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
-import { updateConcept } from '../services/api';
+import { X, Edit3, Sparkles, AlertCircle, Loader2, GitBranch } from 'lucide-react';
+import { fetchConceptBySlug, updateConcept } from '../services/api';
+import MarkdownEditor from './MarkdownEditor';
+import TagInput from './TagInput';
 
-export default function EditConceptModal({ isOpen, concept, onClose, onUpdated, showToast }) {
+const CATEGORIES = [
+  { value: '', label: 'No category' },
+  { value: 'architecture', label: 'Architecture' },
+  { value: 'design-patterns', label: 'Design Patterns' },
+  { value: 'devops', label: 'DevOps' },
+  { value: 'security', label: 'Security' },
+  { value: 'performance', label: 'Performance' },
+  { value: 'testing', label: 'Testing' },
+  { value: 'languages', label: 'Languages' },
+  { value: 'frameworks', label: 'Frameworks' },
+  { value: 'infrastructure', label: 'Infrastructure' },
+  { value: 'data', label: 'Data' },
+  { value: 'networking', label: 'Networking' },
+  { value: 'other', label: 'Other' },
+];
+
+export default function EditConceptModal({
+  isOpen,
+  concept,
+  onClose,
+  onUpdated,
+  showToast,
+  availableRepositories = [],
+}) {
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [summary, setSummary] = useState('');
+  const [content, setContent] = useState('');
+  const [tags, setTags] = useState([]);
+  const [category, setCategory] = useState('');
   const [status, setStatus] = useState('DRAFT');
+  const [selectedRepoIds, setSelectedRepoIds] = useState([]);
   const [autoSlug, setAutoSlug] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (concept) {
+    let isCurrent = true;
+    if (isOpen && concept) {
       setTitle(concept.title || '');
       setSlug(concept.slug || '');
       setSummary(concept.summary || '');
+      setContent(concept.content || '');
+      setTags(Array.isArray(concept.tags) ? concept.tags : []);
+      setCategory(concept.category || '');
       setStatus(concept.status || 'DRAFT');
+      setSelectedRepoIds(
+        Array.isArray(concept.repositories) ? concept.repositories.map((r) => r.id) : []
+      );
       setAutoSlug(false);
       setError(null);
+
+      // Hydrate latest details from API so markdown content and links are never stale
+      if (concept.slug) {
+        setLoadingDetails(true);
+        fetchConceptBySlug(concept.slug)
+          .then((full) => {
+            if (!isCurrent || !full) return;
+            setTitle(full.title || '');
+            setSlug(full.slug || '');
+            setSummary(full.summary || '');
+            setContent(full.content || '');
+            setTags(Array.isArray(full.tags) ? full.tags : []);
+            setCategory(full.category || '');
+            setStatus(full.status || 'DRAFT');
+            setSelectedRepoIds(
+              Array.isArray(full.repositories) ? full.repositories.map((r) => r.id) : []
+            );
+          })
+          .catch(() => {
+            // Keep cached props on transient failure
+          })
+          .finally(() => {
+            if (isCurrent) setLoadingDetails(false);
+          });
+      }
     }
+    return () => {
+      isCurrent = false;
+    };
   }, [concept, isOpen]);
 
   useEffect(() => {
@@ -47,6 +112,12 @@ export default function EditConceptModal({ isOpen, concept, onClose, onUpdated, 
     }
   };
 
+  const toggleRepoSelection = (repoId) => {
+    setSelectedRepoIds((prev) =>
+      prev.includes(repoId) ? prev.filter((id) => id !== repoId) : [...prev, repoId]
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -61,7 +132,11 @@ export default function EditConceptModal({ isOpen, concept, onClose, onUpdated, 
         title: title.trim(),
         slug: slug.trim(),
         summary: summary.trim(),
-        status: status
+        status: status,
+        content: content,
+        tags: tags,
+        category: category,
+        repository_ids: selectedRepoIds,
       });
 
       setSubmitting(false);
@@ -94,12 +169,15 @@ export default function EditConceptModal({ isOpen, concept, onClose, onUpdated, 
         onClick={(e) => e.stopPropagation()}
         className="matte-card"
         style={{
-          width: '580px',
-          maxWidth: '92vw',
+          width: '900px',
+          maxWidth: '95vw',
+          maxHeight: '90vh',
           backgroundColor: 'var(--surface-primary)',
           borderColor: 'var(--border-color)',
           overflow: 'hidden',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)'
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* Modal Header */}
@@ -108,7 +186,8 @@ export default function EditConceptModal({ isOpen, concept, onClose, onUpdated, 
           borderBottom: '1px solid var(--border-color)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
@@ -127,7 +206,7 @@ export default function EditConceptModal({ isOpen, concept, onClose, onUpdated, 
                 Edit Concept #{concept.id}
               </h3>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Modify metadata, summary, and lifecycle state.
+                Modify content, metadata, tags, repo associations, and lifecycle state.
               </p>
             </div>
           </div>
@@ -142,8 +221,8 @@ export default function EditConceptModal({ isOpen, concept, onClose, onUpdated, 
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} style={{ padding: '22px' }}>
+        {/* Form Body - Scrollable */}
+        <form onSubmit={handleSubmit} style={{ padding: '22px', overflowY: 'auto', flex: 1 }}>
           {error && (
             <div style={{
               backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -162,99 +241,186 @@ export default function EditConceptModal({ isOpen, concept, onClose, onUpdated, 
             </div>
           )}
 
-          {/* Title Input */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              CONCEPT TITLE *
-            </label>
-            <input
-              type="text"
-              className="input-matte"
-              placeholder="e.g. Distributed Caching Strategies"
-              value={title}
-              onChange={handleTitleChange}
-              required
-              disabled={submitting}
-            />
-          </div>
-
-          {/* Slug Input */}
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                URL SLUG *
-              </label>
-              <button
-                type="button"
-                onClick={() => setAutoSlug(!autoSlug)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: autoSlug ? 'var(--emerald-primary)' : 'var(--text-muted)',
-                  fontSize: '0.725rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Sparkles size={12} />
-                <span>{autoSlug ? 'Auto-generating' : 'Manual mode'}</span>
-              </button>
+          {loadingDetails ? (
+            <div style={{ padding: '28px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Loading full concept content...
             </div>
-            <input
-              type="text"
-              className="input-matte font-mono"
-              placeholder="e.g. distributed-caching-strategies"
-              value={slug}
-              onChange={(e) => {
-                setAutoSlug(false);
-                setSlug(e.target.value);
-              }}
-              required
-              disabled={submitting}
-            />
-          </div>
+          ) : (
+            <>
+              {/* Title and Slug Row */}
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    CONCEPT TITLE *
+                  </label>
+                  <input
+                    type="text"
+                    className="input-matte"
+                    placeholder="e.g. Distributed Caching Strategies"
+                    value={title}
+                    onChange={handleTitleChange}
+                    required
+                    disabled={submitting}
+                  />
+                </div>
 
-          {/* Status Select */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              LIFECYCLE STATUS
-            </label>
-            <select
-              className="input-matte"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              disabled={submitting}
-              style={{ width: '100%', cursor: 'pointer' }}
-            >
-              <option value="DRAFT">DRAFT</option>
-              <option value="PUBLISHED">PUBLISHED</option>
-              <option value="ARCHIVED">ARCHIVED</option>
-            </select>
-          </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      URL SLUG *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setAutoSlug(!autoSlug)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: autoSlug ? 'var(--emerald-primary)' : 'var(--text-muted)',
+                        fontSize: '0.725rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Sparkles size={12} />
+                      <span>{autoSlug ? 'Auto' : 'Manual'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    className="input-matte font-mono"
+                    placeholder="e.g. distributed-caching-strategies"
+                    value={slug}
+                    onChange={(e) => {
+                      setAutoSlug(false);
+                      setSlug(e.target.value);
+                    }}
+                    required
+                    disabled={submitting}
+                  />
+                </div>
+              </div>
 
-          {/* Summary Textarea */}
-          <div style={{ marginBottom: '22px' }}>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              CONCEPT SUMMARY / UNDERSTANDING
-            </label>
-            <textarea
-              className="input-matte"
-              rows={4}
-              placeholder="Explain the architectural pattern, tradeoffs, or key engineering understanding..."
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              disabled={submitting}
-            />
-          </div>
+              {/* Category, Status, Summary Row */}
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                <div style={{ width: '170px', flexShrink: 0 }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    CATEGORY
+                  </label>
+                  <select
+                    className="input-matte"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    disabled={submitting}
+                    style={{ width: '100%', cursor: 'pointer' }}
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ width: '140px', flexShrink: 0 }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    STATUS
+                  </label>
+                  <select
+                    className="input-matte"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    disabled={submitting}
+                    style={{ width: '100%', cursor: 'pointer' }}
+                  >
+                    <option value="DRAFT">DRAFT</option>
+                    <option value="PUBLISHED">PUBLISHED</option>
+                    <option value="ARCHIVED">ARCHIVED</option>
+                  </select>
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    SUMMARY
+                  </label>
+                  <input
+                    type="text"
+                    className="input-matte"
+                    placeholder="Brief one-line description"
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                    disabled={submitting}
+                  />
+                </div>
+              </div>
+
+              {/* Tags Input */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  TAGS
+                </label>
+                <TagInput
+                  tags={tags}
+                  onChange={setTags}
+                  disabled={submitting}
+                  placeholder="Type a tag and press Enter…"
+                />
+              </div>
+
+              {/* Associate Repositories */}
+              {availableRepositories.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    <GitBranch size={13} color="var(--emerald-primary)" />
+                    <span>ASSOCIATE REPOSITORIES</span>
+                  </label>
+                  <div style={{
+                    maxHeight: '110px',
+                    overflowY: 'auto',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    backgroundColor: 'var(--bg-main)',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px 16px'
+                  }}>
+                    {availableRepositories.map((repo) => (
+                      <label key={repo.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedRepoIds.includes(repo.id)}
+                          onChange={() => toggleRepoSelection(repo.id)}
+                          disabled={submitting}
+                        />
+                        <span>{repo.name}</span>
+                        {repo.workspaces && repo.workspaces.length > 0 && (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            ({repo.workspaces.map((w) => w.name).join(', ')})
+                          </span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Markdown Editor */}
+              <div style={{ marginBottom: '22px' }}>
+                <MarkdownEditor
+                  value={content}
+                  onChange={setContent}
+                  disabled={submitting}
+                />
+              </div>
+            </>
+          )}
 
           {/* Actions */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button type="button" className="btn-secondary" onClick={onClose} disabled={submitting}>
               Cancel
             </button>
-            <button type="submit" className="btn-emerald" disabled={submitting}>
+            <button type="submit" className="btn-emerald" disabled={submitting || loadingDetails}>
               {submitting ? (
                 <>
                   <Loader2 size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} />

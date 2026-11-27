@@ -164,6 +164,8 @@ export default function App() {
           {activeTab === 'library' && (
             <ForgeLibrary 
               concepts={concepts}
+              workspaces={workspaces}
+              repositories={repositories}
               onSelectConcept={setSelectedConcept}
               onOpenCreateModal={() => setIsCreateModalOpen(true)}
               onEditConcept={setEditingConcept}
@@ -206,6 +208,7 @@ export default function App() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={loadData}
         showToast={showToast}
+        availableRepositories={repositories}
       />
 
       <EditConceptModal 
@@ -214,6 +217,7 @@ export default function App() {
         onClose={() => setEditingConcept(null)}
         onUpdated={handleConceptUpdated}
         showToast={showToast}
+        availableRepositories={repositories}
       />
 
       <DeleteConfirmationModal 

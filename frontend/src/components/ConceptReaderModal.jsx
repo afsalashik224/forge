@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { X, BookOpen, Tag, Layers, AlertCircle, Edit3, Trash2, GitBranch } from 'lucide-react';
+import { X, BookOpen, Tag, Layers, AlertCircle, Edit3, Trash2, GitBranch, Hash, FolderGit2 } from 'lucide-react';
 import { fetchConceptBySlug } from '../services/api';
+import MarkdownRenderer from './MarkdownRenderer';
 
 export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete }) {
   const [fullConcept, setFullConcept] = useState(concept);
@@ -47,6 +48,9 @@ export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete 
 
   if (!concept) return null;
 
+  const conceptTags = Array.isArray(fullConcept?.tags) ? fullConcept.tags : [];
+  const conceptCategory = fullConcept?.category || '';
+
   return (
     <div 
       className="modal-backdrop"
@@ -59,9 +63,9 @@ export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete 
         onClick={(e) => e.stopPropagation()}
         className="matte-card"
         style={{
-          width: '700px',
-          maxWidth: '92vw',
-          maxHeight: '85vh',
+          width: '800px',
+          maxWidth: '95vw',
+          maxHeight: '90vh',
           backgroundColor: 'var(--surface-primary)',
           borderColor: 'var(--border-color)',
           display: 'flex',
@@ -76,7 +80,8 @@ export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete 
           borderBottom: '1px solid var(--border-color)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
@@ -158,58 +163,139 @@ export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete 
                 display: 'flex',
                 alignItems: 'center',
                 gap: '14px',
-                marginBottom: '20px',
+                marginBottom: '16px',
                 paddingBottom: '14px',
                 borderBottom: '1px solid var(--border-color)',
                 fontSize: '0.75rem',
-                color: 'var(--text-secondary)'
+                color: 'var(--text-secondary)',
+                flexWrap: 'wrap',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'var(--font-mono)', color: 'var(--emerald-primary)' }}>
                   <Tag size={13} />
                   <span>{fullConcept?.slug}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Layers size={13} color="var(--text-muted)" />
-                  <span>Forge Repository</span>
-                </div>
-              </div>
-
-              {/* Concept Summary Text */}
-              <div style={{
-                backgroundColor: 'var(--surface-secondary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '6px',
-                padding: '18px',
-                fontSize: '0.875rem',
-                lineHeight: '1.65',
-                color: 'var(--text-secondary)',
-                whiteSpace: 'pre-wrap',
-                marginBottom: '16px'
-              }}>
-                {fullConcept?.summary || 'No summary text recorded for this concept.'}
-              </div>
-
-              {/* Associated Repositories */}
-              {fullConcept?.repositories && fullConcept.repositories.length > 0 && (
-                <div style={{ marginTop: '14px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                    ASSOCIATED REPOSITORIES ({fullConcept.repositories.length})
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {fullConcept.repositories.map(repo => (
-                      <span
-                        key={repo.id}
-                        className="badge-emerald"
-                        style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 8px' }}
-                      >
-                        <GitBranch size={12} />
-                        <span>{repo.name}</span>
-                        {repo.primary_language && (
-                          <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({repo.primary_language})</span>
-                        )}
-                      </span>
-                    ))}
+                {conceptCategory && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Layers size={13} color="var(--text-muted)" />
+                    <span style={{ textTransform: 'capitalize' }}>{conceptCategory.replace(/-/g, ' ')}</span>
                   </div>
+                )}
+              </div>
+
+              {/* Tags */}
+              {conceptTags.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
+                  {conceptTags.map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        backgroundColor: 'var(--surface-secondary)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        padding: '2px 8px',
+                        fontSize: '0.725rem',
+                        fontWeight: 500,
+                      }}
+                    >
+                      <Hash size={10} />
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Summary */}
+              {fullConcept?.summary && (
+                <div style={{
+                  backgroundColor: 'var(--surface-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  padding: '14px 18px',
+                  fontSize: '0.875rem',
+                  lineHeight: '1.65',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '16px',
+                  fontStyle: 'italic',
+                }}>
+                  {fullConcept.summary}
+                </div>
+              )}
+
+              {/* Markdown Content */}
+              {fullConcept?.content ? (
+                <div style={{
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  lineHeight: '1.65',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '16px',
+                }}>
+                  <MarkdownRenderer content={fullConcept.content} />
+                </div>
+              ) : !fullConcept?.summary ? (
+                <div style={{
+                  backgroundColor: 'var(--surface-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  padding: '18px',
+                  fontSize: '0.875rem',
+                  color: 'var(--text-muted)',
+                  fontStyle: 'italic',
+                }}>
+                  No content recorded for this concept.
+                </div>
+              ) : null}
+
+              {/* Associated Workspaces & Repositories */}
+              {((fullConcept?.workspaces && fullConcept.workspaces.length > 0) ||
+                (fullConcept?.repositories && fullConcept.repositories.length > 0)) && (
+                <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
+                  {fullConcept?.workspaces && fullConcept.workspaces.length > 0 && (
+                    <div style={{ marginBottom: '10px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                        ASSOCIATED WORKSPACES ({fullConcept.workspaces.length})
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {fullConcept.workspaces.map(ws => (
+                          <span
+                            key={ws.id}
+                            className="badge-copper"
+                            style={{ fontSize: '0.725rem', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 8px' }}
+                          >
+                            <FolderGit2 size={12} />
+                            <span>{ws.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {fullConcept?.repositories && fullConcept.repositories.length > 0 && (
+                    <div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                        ASSOCIATED REPOSITORIES ({fullConcept.repositories.length})
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {fullConcept.repositories.map(repo => (
+                          <span
+                            key={repo.id}
+                            className="badge-emerald"
+                            style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 8px' }}
+                          >
+                            <GitBranch size={12} />
+                            <span>{repo.name}</span>
+                            {repo.primary_language && (
+                              <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({repo.primary_language})</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -225,7 +311,8 @@ export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete 
           alignItems: 'center',
           justifyContent: 'space-between',
           fontSize: '0.75rem',
-          color: 'var(--text-muted)'
+          color: 'var(--text-muted)',
+          flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {onDelete && (

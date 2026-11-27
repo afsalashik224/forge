@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, BookOpen, Compass, TrendingUp, FileCode2, LayoutDashboard, X, ArrowRight } from 'lucide-react';
+import { Search, BookOpen, Compass, TrendingUp, FileCode2, LayoutDashboard, FolderGit2, X, ArrowRight } from 'lucide-react';
 
 export default function CommandPalette({ isOpen, onClose, onOpen, concepts = [], setActiveTab, onSelectConcept }) {
   const [query, setQuery] = useState('');
@@ -42,19 +42,24 @@ export default function CommandPalette({ isOpen, onClose, onOpen, concepts = [],
 
   if (!isOpen) return null;
 
+  const q = query.toLowerCase();
   const filteredConcepts = concepts.filter(c => 
-    c.title.toLowerCase().includes(query.toLowerCase()) || 
-    c.slug.toLowerCase().includes(query.toLowerCase()) ||
-    (c.summary && c.summary.toLowerCase().includes(query.toLowerCase()))
+    c.title.toLowerCase().includes(q) || 
+    c.slug.toLowerCase().includes(q) ||
+    (c.summary && c.summary.toLowerCase().includes(q)) ||
+    (c.content && c.content.toLowerCase().includes(q)) ||
+    (c.category && c.category.toLowerCase().includes(q)) ||
+    (Array.isArray(c.tags) && c.tags.some(t => t.toLowerCase().includes(q)))
   );
 
   const navCommands = [
     { id: 'workspace', label: 'Knowledge Workspace Overview', icon: LayoutDashboard },
     { id: 'library', label: 'Forge Library (Concepts Catalog)', icon: BookOpen },
+    { id: 'workspaces', label: 'Workspaces & Repositories', icon: FolderGit2 },
     { id: 'compass', label: 'Forge Compass (Recommendations Preview)', icon: Compass },
     { id: 'progress', label: 'Repository Progress (Mastery Preview)', icon: TrendingUp },
     { id: 'adrs', label: 'Architecture Records (ADR Tracker)', icon: FileCode2 },
-  ].filter(p => p.label.toLowerCase().includes(query.toLowerCase()));
+  ].filter(p => p.label.toLowerCase().includes(q));
 
   return (
     <div 

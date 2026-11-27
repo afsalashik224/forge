@@ -1,11 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Plus, Sparkles, AlertCircle, Loader2, GitBranch } from 'lucide-react';
 import { createConcept } from '../services/api';
+import MarkdownEditor from './MarkdownEditor';
+import TagInput from './TagInput';
 
-export default function CreateConceptModal({ isOpen, onClose, onCreated, showToast }) {
+const CATEGORIES = [
+  { value: '', label: 'No category' },
+  { value: 'architecture', label: 'Architecture' },
+  { value: 'design-patterns', label: 'Design Patterns' },
+  { value: 'devops', label: 'DevOps' },
+  { value: 'security', label: 'Security' },
+  { value: 'performance', label: 'Performance' },
+  { value: 'testing', label: 'Testing' },
+  { value: 'languages', label: 'Languages' },
+  { value: 'frameworks', label: 'Frameworks' },
+  { value: 'infrastructure', label: 'Infrastructure' },
+  { value: 'data', label: 'Data' },
+  { value: 'networking', label: 'Networking' },
+  { value: 'other', label: 'Other' },
+];
+
+export default function CreateConceptModal({
+  isOpen,
+  onClose,
+  onCreated,
+  showToast,
+  availableRepositories = [],
+}) {
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [summary, setSummary] = useState('');
+  const [content, setContent] = useState('');
+  const [tags, setTags] = useState([]);
+  const [category, setCategory] = useState('');
+  const [selectedRepoIds, setSelectedRepoIds] = useState([]);
   const [autoSlug, setAutoSlug] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -35,6 +63,12 @@ export default function CreateConceptModal({ isOpen, onClose, onCreated, showToa
     }
   };
 
+  const toggleRepoSelection = (repoId) => {
+    setSelectedRepoIds((prev) =>
+      prev.includes(repoId) ? prev.filter((id) => id !== repoId) : [...prev, repoId]
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -48,11 +82,19 @@ export default function CreateConceptModal({ isOpen, onClose, onCreated, showToa
       await createConcept({
         title: title.trim(),
         slug: slug.trim(),
-        summary: summary.trim()
+        summary: summary.trim(),
+        content: content,
+        tags: tags,
+        category: category,
+        repository_ids: selectedRepoIds,
       });
       setTitle('');
       setSlug('');
       setSummary('');
+      setContent('');
+      setTags([]);
+      setCategory('');
+      setSelectedRepoIds([]);
       setSubmitting(false);
       
       if (showToast) showToast(`Concept "${title.trim()}" forged successfully!`, 'success');
@@ -80,12 +122,15 @@ export default function CreateConceptModal({ isOpen, onClose, onCreated, showToa
         onClick={(e) => e.stopPropagation()}
         className="matte-card"
         style={{
-          width: '580px',
-          maxWidth: '92vw',
+          width: '900px',
+          maxWidth: '95vw',
+          maxHeight: '90vh',
           backgroundColor: 'var(--surface-primary)',
           borderColor: 'var(--border-color)',
           overflow: 'hidden',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)'
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* Modal Header */}
@@ -94,7 +139,8 @@ export default function CreateConceptModal({ isOpen, onClose, onCreated, showToa
           borderBottom: '1px solid var(--border-color)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
@@ -113,7 +159,7 @@ export default function CreateConceptModal({ isOpen, onClose, onCreated, showToa
                 Forge New Concept
               </h3>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Add an engineering concept to your repository knowledge base.
+                Author rich knowledge with Markdown, tags, categories, and repo links.
               </p>
             </div>
           </div>
@@ -128,8 +174,8 @@ export default function CreateConceptModal({ isOpen, onClose, onCreated, showToa
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} style={{ padding: '22px' }}>
+        {/* Form Body - Scrollable */}
+        <form onSubmit={handleSubmit} style={{ padding: '22px', overflowY: 'auto', flex: 1 }}>
           {error && (
             <div style={{
               backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -148,71 +194,151 @@ export default function CreateConceptModal({ isOpen, onClose, onCreated, showToa
             </div>
           )}
 
-          {/* Title Input */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              CONCEPT TITLE *
-            </label>
-            <input
-              type="text"
-              className="input-matte"
-              placeholder="e.g. Distributed Caching Strategies"
-              value={title}
-              onChange={handleTitleChange}
-              required
-              disabled={submitting}
-            />
-          </div>
-
-          {/* Slug Input */}
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                URL SLUG *
+          {/* Title and Slug Row */}
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                CONCEPT TITLE *
               </label>
-              <button
-                type="button"
-                onClick={() => setAutoSlug(!autoSlug)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: autoSlug ? 'var(--emerald-primary)' : 'var(--text-muted)',
-                  fontSize: '0.725rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Sparkles size={12} />
-                <span>{autoSlug ? 'Auto-generating' : 'Manual mode'}</span>
-              </button>
+              <input
+                type="text"
+                className="input-matte"
+                placeholder="e.g. Distributed Caching Strategies"
+                value={title}
+                onChange={handleTitleChange}
+                required
+                disabled={submitting}
+              />
             </div>
-            <input
-              type="text"
-              className="input-matte font-mono"
-              placeholder="e.g. distributed-caching-strategies"
-              value={slug}
-              onChange={(e) => {
-                setAutoSlug(false);
-                setSlug(e.target.value);
-              }}
-              required
+
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  URL SLUG *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setAutoSlug(!autoSlug)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: autoSlug ? 'var(--emerald-primary)' : 'var(--text-muted)',
+                    fontSize: '0.725rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Sparkles size={12} />
+                  <span>{autoSlug ? 'Auto' : 'Manual'}</span>
+                </button>
+              </div>
+              <input
+                type="text"
+                className="input-matte font-mono"
+                placeholder="e.g. distributed-caching-strategies"
+                value={slug}
+                onChange={(e) => {
+                  setAutoSlug(false);
+                  setSlug(e.target.value);
+                }}
+                required
+                disabled={submitting}
+              />
+            </div>
+          </div>
+
+          {/* Category and Summary Row */}
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ width: '200px', flexShrink: 0 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                CATEGORY
+              </label>
+              <select
+                className="input-matte"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                disabled={submitting}
+                style={{ width: '100%', cursor: 'pointer' }}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                SUMMARY
+              </label>
+              <input
+                type="text"
+                className="input-matte"
+                placeholder="Brief one-line description of the concept"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+          </div>
+
+          {/* Tags Input */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              TAGS
+            </label>
+            <TagInput
+              tags={tags}
+              onChange={setTags}
               disabled={submitting}
+              placeholder="Type a tag and press Enter…"
             />
           </div>
 
-          {/* Summary Textarea */}
+          {/* Associate Repositories */}
+          {availableRepositories.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                <GitBranch size={13} color="var(--emerald-primary)" />
+                <span>ASSOCIATE REPOSITORIES</span>
+              </label>
+              <div style={{
+                maxHeight: '110px',
+                overflowY: 'auto',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                padding: '8px 10px',
+                backgroundColor: 'var(--bg-main)',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '8px 16px'
+              }}>
+                {availableRepositories.map((repo) => (
+                  <label key={repo.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedRepoIds.includes(repo.id)}
+                      onChange={() => toggleRepoSelection(repo.id)}
+                      disabled={submitting}
+                    />
+                    <span>{repo.name}</span>
+                    {repo.workspaces && repo.workspaces.length > 0 && (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        ({repo.workspaces.map((w) => w.name).join(', ')})
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Markdown Editor */}
           <div style={{ marginBottom: '22px' }}>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              CONCEPT SUMMARY / UNDERSTANDING
-            </label>
-            <textarea
-              className="input-matte"
-              rows={4}
-              placeholder="Explain the architectural pattern, tradeoffs, or key engineering understanding..."
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
+            <MarkdownEditor
+              value={content}
+              onChange={setContent}
               disabled={submitting}
             />
           </div>

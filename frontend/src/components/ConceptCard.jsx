@@ -1,7 +1,10 @@
 import React from 'react';
-import { BookOpen, ExternalLink, Tag, Edit3, Trash2 } from 'lucide-react';
+import { BookOpen, ExternalLink, Tag, Edit3, Trash2, Hash } from 'lucide-react';
 
 export default function ConceptCard({ concept, onClick, onEdit, onDelete }) {
+  const conceptTags = Array.isArray(concept.tags) ? concept.tags : [];
+  const conceptCategory = concept.category || '';
+
   return (
     <div 
       className="matte-card matte-card-interactive"
@@ -18,7 +21,14 @@ export default function ConceptCard({ concept, onClick, onEdit, onDelete }) {
       <div>
         {/* Header Row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <span className="badge-emerald">{concept.status || 'DRAFT'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="badge-emerald">{concept.status || 'DRAFT'}</span>
+            {conceptCategory && (
+              <span className="badge-slate" style={{ fontSize: '0.675rem', textTransform: 'capitalize' }}>
+                {conceptCategory.replace(/-/g, ' ')}
+              </span>
+            )}
+          </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
             #{concept.id}
           </span>
@@ -61,6 +71,36 @@ export default function ConceptCard({ concept, onClick, onEdit, onDelete }) {
         }}>
           {concept.summary || 'No summary provided for this concept.'}
         </p>
+
+        {/* Tags */}
+        {conceptTags.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '10px' }}>
+            {conceptTags.slice(0, 4).map((tag) => (
+              <span
+                key={tag}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  backgroundColor: 'var(--surface-secondary)',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '3px',
+                  padding: '1px 6px',
+                  fontSize: '0.675rem',
+                }}
+              >
+                <Hash size={9} />
+                {tag}
+              </span>
+            ))}
+            {conceptTags.length > 4 && (
+              <span style={{ fontSize: '0.675rem', color: 'var(--text-muted)', padding: '1px 4px' }}>
+                +{conceptTags.length - 4}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Card Footer */}

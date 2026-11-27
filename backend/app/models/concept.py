@@ -8,6 +8,9 @@ class Concept(db.Model):
 	title = db.Column(db.String(200), nullable=False)
 	slug = db.Column(db.String(200), unique=True, nullable=False)
 	summary = db.Column(db.Text)
+	content = db.Column(db.Text)
+	tags = db.Column(db.Text, default="[]")
+	category = db.Column(db.String(50), default="")
 
 	status = db.Column(
 		db.String(20),

@@ -29,9 +29,19 @@ export async function fetchHealthStatus() {
 // Concepts API
 // -----------------------------------------------------------------------------
 
-export async function fetchConcepts() {
+export async function fetchConcepts(params = {}) {
   try {
-    const res = await fetch('/api/concepts/');
+    const query = new URLSearchParams();
+    if (params.q) query.set('q', params.q);
+    if (params.tags) query.set('tags', Array.isArray(params.tags) ? params.tags.join(',') : params.tags);
+    if (params.category) query.set('category', params.category);
+    if (params.status) query.set('status', params.status);
+    if (params.repository) query.set('repository', params.repository);
+    if (params.workspace) query.set('workspace', params.workspace);
+
+    const qs = query.toString();
+    const url = qs ? `/api/concepts/?${qs}` : '/api/concepts/';
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`Server returned HTTP status ${res.status}`);
     }
@@ -41,6 +51,10 @@ export async function fetchConcepts() {
     console.error("Failed to fetch concepts:", error);
     throw new Error("Unable to connect to Forge concept service. Please verify backend state.");
   }
+}
+
+export async function searchConcepts(params = {}) {
+  return fetchConcepts(params);
 }
 
 export async function fetchConceptBySlug(slug) {
