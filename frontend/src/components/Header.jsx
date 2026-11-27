@@ -12,6 +12,8 @@ export default function Header({
     switch (tab) {
       case 'workspace': return 'Knowledge Workspace';
       case 'library': return 'Forge Library';
+      case 'workspaces': return 'Workspaces & Repositories';
+      case 'graph': return 'Knowledge Graph';
       case 'compass': return 'Forge Compass';
       case 'progress': return 'Repository Progress';
       case 'adrs': return 'Architecture Records';
@@ -113,7 +115,7 @@ export default function Header({
         </div>
 
         {/* Create Concept CTA */}
-        <button className="btn-emerald" onClick={onOpenCreateModal}>
+        <button className="btn-emerald" onClick={onOpenCreateModal} aria-label="Forge Concept">
           <Plus size={15} />
           <span className="btn-text-label">Forge Concept</span>
         </button>

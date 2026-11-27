@@ -368,3 +368,105 @@ export async function unlinkConceptFromRepository(repoSlug, conceptSlug) {
     throw error;
   }
 }
+
+// -----------------------------------------------------------------------------
+// Knowledge Graph API
+// -----------------------------------------------------------------------------
+
+export async function fetchKnowledgeGraph(params = {}) {
+  try {
+    const query = new URLSearchParams();
+    if (params.entity_types && params.entity_types.length > 0) {
+      query.set('entity_types', Array.isArray(params.entity_types) ? params.entity_types.join(',') : params.entity_types);
+    }
+    if (params.relationship_types && params.relationship_types.length > 0) {
+      query.set('relationship_types', Array.isArray(params.relationship_types) ? params.relationship_types.join(',') : params.relationship_types);
+    }
+    if (params.workspace) query.set('workspace', params.workspace);
+    if (params.repository) query.set('repository', params.repository);
+    if (params.category) query.set('category', params.category);
+    if (params.status) query.set('status', params.status);
+    if (params.q) query.set('q', params.q);
+    if (params.focus) query.set('focus', params.focus);
+    if (params.depth) query.set('depth', String(params.depth));
+    if (params.include_neighbors) query.set('include_neighbors', 'true');
+
+    const qs = query.toString();
+    const url = qs ? `/api/graph/?${qs}` : '/api/graph/';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch knowledge graph:", error);
+    throw error;
+  }
+}
+
+export async function fetchNodeNeighbors(entityType, identifier, depth = 1) {
+  try {
+    const res = await fetch(`/api/graph/nodes/${encodeURIComponent(entityType)}/${encodeURIComponent(identifier)}/neighbors?depth=${depth}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch node neighbors:", error);
+    throw error;
+  }
+}
+
+export async function fetchRelationships(params = {}) {
+  try {
+    const query = new URLSearchParams();
+    if (params.concept) query.set('concept', params.concept);
+    if (params.relationship_type) query.set('relationship_type', params.relationship_type);
+    const qs = query.toString();
+    const res = await fetch(qs ? `/api/graph/relationships?${qs}` : '/api/graph/relationships');
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch relationships:", error);
+    throw error;
+  }
+}
+
+export async function createRelationship(payload) {
+  try {
+    const res = await fetch('/api/graph/relationships', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to create relationship:", error);
+    throw error;
+  }
+}
+
+export async function deleteRelationship(relationshipId) {
+  try {
+    const res = await fetch(`/api/graph/relationships/${encodeURIComponent(relationshipId)}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`Failed to delete relationship ${relationshipId}:`, error);
+    throw error;
+  }
+}

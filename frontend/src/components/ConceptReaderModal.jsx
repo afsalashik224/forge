@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { X, BookOpen, Tag, Layers, AlertCircle, Edit3, Trash2, GitBranch, Hash, FolderGit2 } from 'lucide-react';
+import { X, BookOpen, Tag, Layers, AlertCircle, Edit3, Trash2, GitBranch, Hash, FolderGit2, Link2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { fetchConceptBySlug } from '../services/api';
 import MarkdownRenderer from './MarkdownRenderer';
 
-export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete }) {
+export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete, onSelectConcept }) {
   const [fullConcept, setFullConcept] = useState(concept);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -296,6 +296,51 @@ export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete 
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Knowledge Graph Concept Relationships */}
+              {((fullConcept?.relationships?.outgoing && fullConcept.relationships.outgoing.length > 0) ||
+                (fullConcept?.relationships?.incoming && fullConcept.relationships.incoming.length > 0)) && (
+                <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <Link2 size={13} color="var(--emerald-primary)" />
+                    <span>CONNECTED CONCEPTS</span>
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {(fullConcept.relationships.outgoing || []).map((rel) => (
+                      <button
+                        key={`out-${rel.id}`}
+                        type="button"
+                        onClick={() => onSelectConcept && onSelectConcept(rel.concept)}
+                        className="btn-secondary"
+                        style={{ padding: '5px 10px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        title={rel.description || `${rel.relationship_type} ${rel.concept.title}`}
+                      >
+                        <ArrowRight size={12} color="var(--emerald-primary)" />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.675rem', color: 'var(--emerald-primary)' }}>
+                          {rel.relationship_type}
+                        </span>
+                        <span>{rel.concept.title}</span>
+                      </button>
+                    ))}
+                    {(fullConcept.relationships.incoming || []).map((rel) => (
+                      <button
+                        key={`in-${rel.id}`}
+                        type="button"
+                        onClick={() => onSelectConcept && onSelectConcept(rel.concept)}
+                        className="btn-secondary"
+                        style={{ padding: '5px 10px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        title={rel.description || `${rel.concept.title} ${rel.relationship_type} this`}
+                      >
+                        <ArrowLeft size={12} color="var(--copper-primary)" />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.675rem', color: 'var(--copper-primary)' }}>
+                          {rel.relationship_type}
+                        </span>
+                        <span>{rel.concept.title}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </>

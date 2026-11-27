@@ -16,6 +16,7 @@ import Toast from './components/Toast';
 import KnowledgeWorkspace from './pages/KnowledgeWorkspace';
 import ForgeLibrary from './pages/ForgeLibrary';
 import WorkspaceManager from './pages/WorkspaceManager';
+import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
 import ForgeCompass from './pages/ForgeCompass';
 import RepositoryProgress from './pages/RepositoryProgress';
 import AdrTracker from './pages/AdrTracker';
@@ -53,6 +54,9 @@ export default function App() {
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [graphVersion, setGraphVersion] = useState(0);
+  const [workspaceFocus, setWorkspaceFocus] = useState(null);
+  const [libraryRepoFilter, setLibraryRepoFilter] = useState('');
 
   const [toast, setToast] = useState({ message: '', type: 'success' });
 
@@ -74,6 +78,7 @@ export default function App() {
       setHealthStatus(healthData);
       setWorkspaces(Array.isArray(workspacesData) ? workspacesData : []);
       setRepositories(Array.isArray(repositoriesData) ? repositoriesData : []);
+      setGraphVersion((v) => v + 1);
     } catch (err) {
       console.error("App load error:", err);
       setError("Failed to connect to Forge API backend.");
@@ -121,6 +126,42 @@ export default function App() {
     }
   };
 
+  const handleNavigateConceptBySlug = (slug) => {
+    const match = concepts.find((c) => c.slug === slug);
+    setSelectedConcept(match || { slug });
+  };
+
+  const handleEditConceptBySlug = (slug) => {
+    const match = concepts.find((c) => c.slug === slug);
+    setEditingConcept(match || { slug });
+  };
+
+  const handleNavigateToWorkspace = (slug) => {
+    setWorkspaceFocus({ subTab: 'workspaces', query: slug, ts: Date.now() });
+    setActiveTab('workspaces');
+  };
+
+  const handleNavigateToRepository = (slug) => {
+    setWorkspaceFocus({ subTab: 'repositories', query: slug, ts: Date.now() });
+    setActiveTab('workspaces');
+  };
+
+  const handleFilterLibraryByRepo = (repoSlug) => {
+    setLibraryRepoFilter(repoSlug);
+    setActiveTab('library');
+  };
+
+  const handleNavigateFromGraphNode = (node) => {
+    if (!node) return;
+    if (node.entity_type === 'concept') {
+      handleNavigateConceptBySlug(node.slug);
+    } else if (node.entity_type === 'repository') {
+      handleNavigateToRepository(node.slug);
+    } else if (node.entity_type === 'workspace') {
+      handleNavigateToWorkspace(node.slug);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -157,6 +198,8 @@ export default function App() {
               onEditConcept={setEditingConcept}
               onDeleteConcept={setDeletingConcept}
               setActiveTab={setActiveTab}
+              onNavigateFromGraphNode={handleNavigateFromGraphNode}
+              graphVersion={graphVersion}
               loading={loading}
             />
           )}
@@ -166,6 +209,7 @@ export default function App() {
               concepts={concepts}
               workspaces={workspaces}
               repositories={repositories}
+              initialRepositoryFilter={libraryRepoFilter}
               onSelectConcept={setSelectedConcept}
               onOpenCreateModal={() => setIsCreateModalOpen(true)}
               onEditConcept={setEditingConcept}
@@ -180,6 +224,7 @@ export default function App() {
               workspaces={workspaces}
               repositories={repositories}
               concepts={concepts}
+              focusTarget={workspaceFocus}
               onOpenCreateWorkspace={() => setIsCreateWorkspaceOpen(true)}
               onOpenEditWorkspace={setEditingWorkspace}
               onDeleteWorkspace={handleDeleteWorkspace}
@@ -189,6 +234,21 @@ export default function App() {
               onOpenAssociateConcept={setAssociatingConceptRepo}
               onSelectConcept={setSelectedConcept}
               loading={loading}
+            />
+          )}
+
+          {activeTab === 'graph' && (
+            <KnowledgeGraphPage
+              concepts={concepts}
+              workspaces={workspaces}
+              refreshKey={graphVersion}
+              onGraphMutated={loadData}
+              onSelectConceptBySlug={handleNavigateConceptBySlug}
+              onEditConceptBySlug={handleEditConceptBySlug}
+              onNavigateToWorkspace={handleNavigateToWorkspace}
+              onNavigateToRepository={handleNavigateToRepository}
+              onFilterLibraryByRepo={handleFilterLibraryByRepo}
+              showToast={showToast}
             />
           )}
 
@@ -233,6 +293,7 @@ export default function App() {
         onClose={() => setSelectedConcept(null)}
         onEdit={setEditingConcept}
         onDelete={setDeletingConcept}
+        onSelectConcept={setSelectedConcept}
       />
 
       {/* Workspace & Repository Modals */}
