@@ -3,6 +3,8 @@ from flask import Flask, jsonify
 from app.database.db import db
 from app.config.settings import Settings
 from app.api.concept_api import concept_api
+from app.api.workspace_api import workspace_api
+from app.api.repository_api import repository_api
 
 
 def create_app(test_config=None):
@@ -16,6 +18,8 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     app.register_blueprint(concept_api)
+    app.register_blueprint(workspace_api)
+    app.register_blueprint(repository_api)
 
     db.init_app(app)
 

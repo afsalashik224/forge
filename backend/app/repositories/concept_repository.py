@@ -25,7 +25,7 @@ class ConceptRepository:
 	def get_all(self):
 		return Concept.query.all()
 
-	def update(self, concept, title=_UNSET, slug=_UNSET, summary=_UNSET, status=_UNSET):
+	def update(self, concept, title=_UNSET, slug=_UNSET, summary=_UNSET, status=_UNSET, content=_UNSET, tags=_UNSET, category=_UNSET):
 		try:
 			if title is not _UNSET:
 				concept.title = title
@@ -35,6 +35,12 @@ class ConceptRepository:
 				concept.summary = summary
 			if status is not _UNSET:
 				concept.status = status
+			if content is not _UNSET:
+				concept.content = content
+			if tags is not _UNSET:
+				concept.tags = tags
+			if category is not _UNSET:
+				concept.category = category
 			db.session.commit()
 			return concept
 		except IntegrityError:

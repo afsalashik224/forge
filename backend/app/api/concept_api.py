@@ -1,3 +1,5 @@
+import json
+
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
@@ -12,6 +14,55 @@ concept_api = Blueprint(
 )
 
 service = ConceptService()
+
+
+def _parse_tags(tags_raw):
+    """Parse tags from JSON string to list."""
+    if not tags_raw:
+        return []
+    try:
+        parsed = json.loads(tags_raw)
+        return parsed if isinstance(parsed, list) else []
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+def _serialize_concept(concept, detailed=False):
+    """Serialize a concept model to a JSON-safe dict."""
+    repos = getattr(concept, "repositories", [])
+    seen_ws = {}
+    for r in repos:
+        for w in getattr(r, "workspaces", []):
+            if w.id not in seen_ws:
+                seen_ws[w.id] = {"id": w.id, "name": w.name, "slug": w.slug}
+
+    payload = {
+        "id": concept.id,
+        "title": concept.title,
+        "slug": concept.slug,
+        "summary": concept.summary,
+        "content": concept.content or "",
+        "status": concept.status,
+        "category": concept.category or "",
+        "tags": _parse_tags(concept.tags),
+        "created_at": concept.created_at.isoformat() if concept.created_at else None,
+        "updated_at": concept.updated_at.isoformat() if concept.updated_at else None,
+        "repositories_count": len(repos),
+        "repositories": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "slug": r.slug,
+                "primary_language": r.primary_language,
+                "status": r.status,
+            }
+            for r in repos
+        ],
+        "workspaces": list(seen_ws.values()),
+    }
+    if detailed:
+        payload["content"] = concept.content or ""
+    return payload
 
 
 @concept_api.post("/")
@@ -32,6 +83,10 @@ def create_concept():
     title = data.get("title")
     slug = data.get("slug")
     summary = data.get("summary", "")
+    content = data.get("content", "")
+    tags = data.get("tags", [])
+    category = data.get("category", "")
+    repository_ids = data.get("repository_ids", [])
 
     if title is None or slug is None:
         return jsonify({
@@ -68,11 +123,43 @@ def create_concept():
 
     summary = summary.strip() if summary else ""
 
+    if content is not None and not isinstance(content, str):
+        return jsonify({
+            "error": "Field 'content' must be a string.",
+            "message": "Field 'content' must be a string."
+        }), 400
+
+    if tags is not None and not isinstance(tags, list):
+        return jsonify({
+            "error": "Field 'tags' must be a list of strings.",
+            "message": "Field 'tags' must be a list of strings."
+        }), 400
+
+    if category is not None and not isinstance(category, str):
+        return jsonify({
+            "error": "Field 'category' must be a string.",
+            "message": "Field 'category' must be a string."
+        }), 400
+
+    if repository_ids is not None and not isinstance(repository_ids, list):
+        return jsonify({
+            "error": "Field 'repository_ids' must be a list of integers.",
+            "message": "Field 'repository_ids' must be a list of integers."
+        }), 400
+
+    # Clean tags
+    if tags:
+        tags = [t.strip() for t in tags if isinstance(t, str) and t.strip()]
+
     try:
         concept = service.create_concept(
             title=title,
             slug=slug,
             summary=summary,
+            content=content or "",
+            tags=tags or [],
+            category=(category or "").strip(),
+            repository_ids=repository_ids,
         )
     except ValueError as e:
         return jsonify({
@@ -102,34 +189,35 @@ def create_concept():
 
     return jsonify({
         "message": "Concept created successfully.",
-        "data": {
-            "id": concept.id,
-            "title": concept.title,
-            "slug": concept.slug,
-            "summary": concept.summary,
-            "status": concept.status,
-            "created_at": concept.created_at.isoformat() if concept.created_at else None,
-            "updated_at": concept.updated_at.isoformat() if concept.updated_at else None,
-        }
+        "data": _serialize_concept(concept, detailed=True),
     }), 201
 
 
 @concept_api.get("/")
 def get_concepts():
     try:
-        concepts = service.get_all_concepts()
-        return jsonify([
-            {
-                "id": concept.id,
-                "title": concept.title,
-                "slug": concept.slug,
-                "summary": concept.summary,
-                "status": concept.status,
-                "created_at": concept.created_at.isoformat() if concept.created_at else None,
-                "updated_at": concept.updated_at.isoformat() if concept.updated_at else None,
-            }
-            for concept in concepts
-        ])
+        # Check for search query parameters
+        q = request.args.get("q", "").strip()
+        tags_param = request.args.get("tags", "").strip()
+        category_param = request.args.get("category", "").strip()
+        status_param = request.args.get("status", "").strip()
+        repository_param = request.args.get("repository", "").strip()
+        workspace_param = request.args.get("workspace", "").strip()
+
+        if q or tags_param or category_param or status_param or repository_param or workspace_param:
+            search_tags = [t.strip() for t in tags_param.split(",") if t.strip()] if tags_param else None
+            concepts = service.search_concepts(
+                query=q or None,
+                tags=search_tags,
+                category=category_param or None,
+                status=status_param or None,
+                repository_slug=repository_param or None,
+                workspace_slug=workspace_param or None,
+            )
+        else:
+            concepts = service.get_all_concepts()
+
+        return jsonify([_serialize_concept(c) for c in concepts])
     except Exception as e:
         current_app.logger.exception("Unexpected error while fetching concepts: %s", e)
         return jsonify({
@@ -148,15 +236,7 @@ def get_concept(slug):
                 "message": "Concept not found."
             }), 404
 
-        return jsonify({
-            "id": concept.id,
-            "title": concept.title,
-            "slug": concept.slug,
-            "summary": concept.summary,
-            "status": concept.status,
-            "created_at": concept.created_at.isoformat() if concept.created_at else None,
-            "updated_at": concept.updated_at.isoformat() if concept.updated_at else None,
-        })
+        return jsonify(_serialize_concept(concept, detailed=True))
     except Exception as e:
         current_app.logger.exception("Unexpected error while retrieving concept: %s", e)
         return jsonify({
@@ -246,6 +326,60 @@ def update_concept(slug):
     else:
         status = _UNSET
 
+    # Content: distinguish omitted from provided
+    if "content" in data:
+        raw_content = data["content"]
+        if raw_content is not None and not isinstance(raw_content, str):
+            return jsonify({
+                "error": "Field 'content' must be a string or null.",
+                "message": "Field 'content' must be a string or null."
+            }), 400
+        content = raw_content if raw_content else ""
+    else:
+        content = _UNSET
+
+    # Tags: distinguish omitted from provided
+    if "tags" in data:
+        raw_tags = data["tags"]
+        if raw_tags is None:
+            tags = []
+        elif not isinstance(raw_tags, list):
+            return jsonify({
+                "error": "Field 'tags' must be a list of strings or null.",
+                "message": "Field 'tags' must be a list of strings or null."
+            }), 400
+        else:
+            tags = [t.strip() for t in raw_tags if isinstance(t, str) and t.strip()]
+    else:
+        tags = _UNSET
+
+    # Category: distinguish omitted from provided
+    if "category" in data:
+        raw_category = data["category"]
+        if raw_category is not None and not isinstance(raw_category, str):
+            return jsonify({
+                "error": "Field 'category' must be a string or null.",
+                "message": "Field 'category' must be a string or null."
+            }), 400
+        category = (raw_category or "").strip()
+    else:
+        category = _UNSET
+
+    # Repository associations: distinguish omitted from provided
+    if "repository_ids" in data:
+        raw_repo_ids = data["repository_ids"]
+        if raw_repo_ids is None:
+            repository_ids = []
+        elif not isinstance(raw_repo_ids, list):
+            return jsonify({
+                "error": "Field 'repository_ids' must be a list of integers or null.",
+                "message": "Field 'repository_ids' must be a list of integers or null."
+            }), 400
+        else:
+            repository_ids = raw_repo_ids
+    else:
+        repository_ids = _UNSET
+
     try:
         updated = service.update_concept(
             current_slug=slug,
@@ -253,6 +387,10 @@ def update_concept(slug):
             slug=new_slug,
             summary=summary,
             status=status,
+            content=content,
+            tags=tags,
+            category=category,
+            repository_ids=repository_ids,
         )
     except LookupError as e:
         return jsonify({
@@ -287,15 +425,7 @@ def update_concept(slug):
 
     return jsonify({
         "message": "Concept updated successfully.",
-        "data": {
-            "id": updated.id,
-            "title": updated.title,
-            "slug": updated.slug,
-            "summary": updated.summary,
-            "status": updated.status,
-            "created_at": updated.created_at.isoformat() if updated.created_at else None,
-            "updated_at": updated.updated_at.isoformat() if updated.updated_at else None,
-        }
+        "data": _serialize_concept(updated, detailed=True),
     }), 200
 
 

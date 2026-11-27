@@ -6,27 +6,51 @@ import CreateConceptModal from './components/CreateConceptModal';
 import EditConceptModal from './components/EditConceptModal';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import ConceptReaderModal from './components/ConceptReaderModal';
+import CreateWorkspaceModal from './components/CreateWorkspaceModal';
+import EditWorkspaceModal from './components/EditWorkspaceModal';
+import CreateRepositoryModal from './components/CreateRepositoryModal';
+import EditRepositoryModal from './components/EditRepositoryModal';
+import AssociateConceptModal from './components/AssociateConceptModal';
 import Toast from './components/Toast';
 
 import KnowledgeWorkspace from './pages/KnowledgeWorkspace';
 import ForgeLibrary from './pages/ForgeLibrary';
+import WorkspaceManager from './pages/WorkspaceManager';
 import ForgeCompass from './pages/ForgeCompass';
 import RepositoryProgress from './pages/RepositoryProgress';
 import AdrTracker from './pages/AdrTracker';
 
-import { fetchConcepts, fetchHealthStatus } from './services/api';
+import { 
+  fetchConcepts, 
+  fetchHealthStatus, 
+  fetchWorkspaces, 
+  fetchRepositories,
+  deleteWorkspace,
+  deleteRepository
+} from './services/api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('workspace');
   const [concepts, setConcepts] = useState([]);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [repositories, setRepositories] = useState([]);
   const [healthStatus, setHealthStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Concept modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingConcept, setEditingConcept] = useState(null);
   const [deletingConcept, setDeletingConcept] = useState(null);
   const [selectedConcept, setSelectedConcept] = useState(null);
+
+  // Workspace & Repository modal states
+  const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
+  const [editingWorkspace, setEditingWorkspace] = useState(null);
+  const [isCreateRepoOpen, setIsCreateRepoOpen] = useState(false);
+  const [editingRepo, setEditingRepo] = useState(null);
+  const [associatingConceptRepo, setAssociatingConceptRepo] = useState(null);
+
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -40,12 +64,16 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const [conceptsData, healthData] = await Promise.all([
+      const [conceptsData, healthData, workspacesData, repositoriesData] = await Promise.all([
         fetchConcepts(),
-        fetchHealthStatus()
+        fetchHealthStatus(),
+        fetchWorkspaces().catch(() => []),
+        fetchRepositories().catch(() => []),
       ]);
       setConcepts(Array.isArray(conceptsData) ? conceptsData : []);
       setHealthStatus(healthData);
+      setWorkspaces(Array.isArray(workspacesData) ? workspacesData : []);
+      setRepositories(Array.isArray(repositoriesData) ? repositoriesData : []);
     } catch (err) {
       console.error("App load error:", err);
       setError("Failed to connect to Forge API backend.");
@@ -57,7 +85,6 @@ export default function App() {
 
   const handleConceptUpdated = (updatedConcept) => {
     loadData();
-    // Propagate updated data and slug changes to open reader modal if active
     if (selectedConcept && (selectedConcept.id === updatedConcept.id || selectedConcept.slug === updatedConcept.slug)) {
       setSelectedConcept(updatedConcept);
     }
@@ -65,9 +92,32 @@ export default function App() {
 
   const handleConceptDeleted = (deletedConcept) => {
     loadData();
-    // If deleted concept was open in reader, close reader modal
     if (selectedConcept && (selectedConcept.id === deletedConcept.id || selectedConcept.slug === deletedConcept.slug)) {
       setSelectedConcept(null);
+    }
+  };
+
+  const handleDeleteWorkspace = async (ws) => {
+    if (window.confirm(`Are you sure you want to delete workspace '${ws.name}'? Associated repositories will not be deleted.`)) {
+      try {
+        await deleteWorkspace(ws.slug);
+        showToast(`Workspace '${ws.name}' deleted.`, "success");
+        loadData();
+      } catch (err) {
+        showToast(err.message || "Failed to delete workspace.", "error");
+      }
+    }
+  };
+
+  const handleDeleteRepository = async (repo) => {
+    if (window.confirm(`Are you sure you want to delete repository '${repo.name}'?`)) {
+      try {
+        await deleteRepository(repo.slug);
+        showToast(`Repository '${repo.name}' deleted.`, "success");
+        loadData();
+      } catch (err) {
+        showToast(err.message || "Failed to delete repository.", "error");
+      }
     }
   };
 
@@ -114,12 +164,31 @@ export default function App() {
           {activeTab === 'library' && (
             <ForgeLibrary 
               concepts={concepts}
+              workspaces={workspaces}
+              repositories={repositories}
               onSelectConcept={setSelectedConcept}
               onOpenCreateModal={() => setIsCreateModalOpen(true)}
               onEditConcept={setEditingConcept}
               onDeleteConcept={setDeletingConcept}
               loading={loading}
               error={error}
+            />
+          )}
+
+          {activeTab === 'workspaces' && (
+            <WorkspaceManager
+              workspaces={workspaces}
+              repositories={repositories}
+              concepts={concepts}
+              onOpenCreateWorkspace={() => setIsCreateWorkspaceOpen(true)}
+              onOpenEditWorkspace={setEditingWorkspace}
+              onDeleteWorkspace={handleDeleteWorkspace}
+              onOpenCreateRepository={() => setIsCreateRepoOpen(true)}
+              onOpenEditRepository={setEditingRepo}
+              onDeleteRepository={handleDeleteRepository}
+              onOpenAssociateConcept={setAssociatingConceptRepo}
+              onSelectConcept={setSelectedConcept}
+              loading={loading}
             />
           )}
 
@@ -133,12 +202,13 @@ export default function App() {
         </main>
       </div>
 
-      {/* Modals & Overlays */}
+      {/* Concept Modals */}
       <CreateConceptModal 
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={loadData}
         showToast={showToast}
+        availableRepositories={repositories}
       />
 
       <EditConceptModal 
@@ -147,6 +217,7 @@ export default function App() {
         onClose={() => setEditingConcept(null)}
         onUpdated={handleConceptUpdated}
         showToast={showToast}
+        availableRepositories={repositories}
       />
 
       <DeleteConfirmationModal 
@@ -162,6 +233,62 @@ export default function App() {
         onClose={() => setSelectedConcept(null)}
         onEdit={setEditingConcept}
         onDelete={setDeletingConcept}
+      />
+
+      {/* Workspace & Repository Modals */}
+      <CreateWorkspaceModal
+        isOpen={isCreateWorkspaceOpen}
+        onClose={() => setIsCreateWorkspaceOpen(false)}
+        onWorkspaceCreated={() => {
+          showToast("Workspace created successfully.");
+          loadData();
+        }}
+        availableRepositories={repositories}
+      />
+
+      <EditWorkspaceModal
+        isOpen={!!editingWorkspace}
+        workspace={editingWorkspace}
+        onClose={() => setEditingWorkspace(null)}
+        onWorkspaceUpdated={() => {
+          showToast("Workspace updated successfully.");
+          loadData();
+        }}
+        availableRepositories={repositories}
+      />
+
+      <CreateRepositoryModal
+        isOpen={isCreateRepoOpen}
+        onClose={() => setIsCreateRepoOpen(false)}
+        onRepositoryCreated={() => {
+          showToast("Repository added successfully.");
+          loadData();
+        }}
+        availableWorkspaces={workspaces}
+        availableConcepts={concepts}
+      />
+
+      <EditRepositoryModal
+        isOpen={!!editingRepo}
+        repository={editingRepo}
+        onClose={() => setEditingRepo(null)}
+        onRepositoryUpdated={() => {
+          showToast("Repository updated successfully.");
+          loadData();
+        }}
+        availableWorkspaces={workspaces}
+        availableConcepts={concepts}
+      />
+
+      <AssociateConceptModal
+        isOpen={!!associatingConceptRepo}
+        repository={associatingConceptRepo}
+        availableConcepts={concepts}
+        onClose={() => setAssociatingConceptRepo(null)}
+        onAssociationChanged={() => {
+          showToast("Concept associations updated.");
+          loadData();
+        }}
       />
 
       <CommandPalette 
