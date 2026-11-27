@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, BookOpen, Tag, Layers, AlertCircle, Edit3, Trash2 } from 'lucide-react';
+import { X, BookOpen, Tag, Layers, AlertCircle, Edit3, Trash2, GitBranch } from 'lucide-react';
 import { fetchConceptBySlug } from '../services/api';
 
 export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete }) {
@@ -183,10 +183,35 @@ export default function ConceptReaderModal({ concept, onClose, onEdit, onDelete 
                 fontSize: '0.875rem',
                 lineHeight: '1.65',
                 color: 'var(--text-secondary)',
-                whiteSpace: 'pre-wrap'
+                whiteSpace: 'pre-wrap',
+                marginBottom: '16px'
               }}>
                 {fullConcept?.summary || 'No summary text recorded for this concept.'}
               </div>
+
+              {/* Associated Repositories */}
+              {fullConcept?.repositories && fullConcept.repositories.length > 0 && (
+                <div style={{ marginTop: '14px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                    ASSOCIATED REPOSITORIES ({fullConcept.repositories.length})
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {fullConcept.repositories.map(repo => (
+                      <span
+                        key={repo.id}
+                        className="badge-emerald"
+                        style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 8px' }}
+                      >
+                        <GitBranch size={12} />
+                        <span>{repo.name}</span>
+                        {repo.primary_language && (
+                          <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({repo.primary_language})</span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

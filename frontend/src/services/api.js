@@ -25,6 +25,10 @@ export async function fetchHealthStatus() {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Concepts API
+// -----------------------------------------------------------------------------
+
 export async function fetchConcepts() {
   try {
     const res = await fetch('/api/concepts/');
@@ -109,6 +113,244 @@ export async function deleteConcept(slug) {
     return data;
   } catch (error) {
     console.error(`Failed to delete concept '${slug}':`, error);
+    throw error;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Workspaces API
+// -----------------------------------------------------------------------------
+
+export async function fetchWorkspaces() {
+  try {
+    const res = await fetch('/api/workspaces/');
+    if (!res.ok) {
+      throw new Error(`Server returned status ${res.status}`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Failed to fetch workspaces:", error);
+    throw error;
+  }
+}
+
+export async function fetchWorkspaceBySlug(slug) {
+  if (!slug) return null;
+  try {
+    const res = await fetch(`/api/workspaces/${encodeURIComponent(slug)}`);
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      throw new Error(`Server returned status ${res.status}`);
+    }
+    return await res.json();
+  } catch (error) {
+    console.error(`Failed to fetch workspace '${slug}':`, error);
+    throw error;
+  }
+}
+
+export async function createWorkspace(payload) {
+  try {
+    const res = await fetch('/api/workspaces/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to create workspace:", error);
+    throw error;
+  }
+}
+
+export async function updateWorkspace(slug, payload) {
+  try {
+    const res = await fetch(`/api/workspaces/${encodeURIComponent(slug)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`Failed to update workspace '${slug}':`, error);
+    throw error;
+  }
+}
+
+export async function deleteWorkspace(slug) {
+  try {
+    const res = await fetch(`/api/workspaces/${encodeURIComponent(slug)}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`Failed to delete workspace '${slug}':`, error);
+    throw error;
+  }
+}
+
+export async function linkRepositoryToWorkspace(workspaceSlug, repoSlug) {
+  try {
+    const res = await fetch(`/api/workspaces/${encodeURIComponent(workspaceSlug)}/repositories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repository_slug: repoSlug }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to link repository to workspace:", error);
+    throw error;
+  }
+}
+
+export async function unlinkRepositoryFromWorkspace(workspaceSlug, repoSlug) {
+  try {
+    const res = await fetch(`/api/workspaces/${encodeURIComponent(workspaceSlug)}/repositories/${encodeURIComponent(repoSlug)}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to unlink repository from workspace:", error);
+    throw error;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Repositories API
+// -----------------------------------------------------------------------------
+
+export async function fetchRepositories() {
+  try {
+    const res = await fetch('/api/repositories/');
+    if (!res.ok) {
+      throw new Error(`Server returned status ${res.status}`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Failed to fetch repositories:", error);
+    throw error;
+  }
+}
+
+export async function fetchRepositoryBySlug(slug) {
+  if (!slug) return null;
+  try {
+    const res = await fetch(`/api/repositories/${encodeURIComponent(slug)}`);
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      throw new Error(`Server returned status ${res.status}`);
+    }
+    return await res.json();
+  } catch (error) {
+    console.error(`Failed to fetch repository '${slug}':`, error);
+    throw error;
+  }
+}
+
+export async function createRepository(payload) {
+  try {
+    const res = await fetch('/api/repositories/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to create repository:", error);
+    throw error;
+  }
+}
+
+export async function updateRepository(slug, payload) {
+  try {
+    const res = await fetch(`/api/repositories/${encodeURIComponent(slug)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`Failed to update repository '${slug}':`, error);
+    throw error;
+  }
+}
+
+export async function deleteRepository(slug) {
+  try {
+    const res = await fetch(`/api/repositories/${encodeURIComponent(slug)}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`Failed to delete repository '${slug}':`, error);
+    throw error;
+  }
+}
+
+export async function linkConceptToRepository(repoSlug, conceptSlug) {
+  try {
+    const res = await fetch(`/api/repositories/${encodeURIComponent(repoSlug)}/concepts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ concept_slug: conceptSlug }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to link concept to repository:", error);
+    throw error;
+  }
+}
+
+export async function unlinkConceptFromRepository(repoSlug, conceptSlug) {
+  try {
+    const res = await fetch(`/api/repositories/${encodeURIComponent(repoSlug)}/concepts/${encodeURIComponent(conceptSlug)}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to unlink concept from repository:", error);
     throw error;
   }
 }

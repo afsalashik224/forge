@@ -127,6 +127,7 @@ def get_concepts():
                 "status": concept.status,
                 "created_at": concept.created_at.isoformat() if concept.created_at else None,
                 "updated_at": concept.updated_at.isoformat() if concept.updated_at else None,
+                "repositories_count": len(getattr(concept, "repositories", [])),
             }
             for concept in concepts
         ])
@@ -156,6 +157,16 @@ def get_concept(slug):
             "status": concept.status,
             "created_at": concept.created_at.isoformat() if concept.created_at else None,
             "updated_at": concept.updated_at.isoformat() if concept.updated_at else None,
+            "repositories": [
+                {
+                    "id": r.id,
+                    "name": r.name,
+                    "slug": r.slug,
+                    "primary_language": r.primary_language,
+                    "status": r.status,
+                }
+                for r in getattr(concept, "repositories", [])
+            ],
         })
     except Exception as e:
         current_app.logger.exception("Unexpected error while retrieving concept: %s", e)

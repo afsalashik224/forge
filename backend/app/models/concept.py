@@ -28,6 +28,13 @@ class Concept(db.Model):
 		onupdate=db.func.now(),
 		nullable=True,
 	)
+
+	repositories = db.relationship(
+		"Repository",
+		secondary="repository_concepts",
+		back_populates="concepts",
+		lazy="select",
+	)
 	
 	def __repr__(self):
 		return f"<Concept {self.title}>"
