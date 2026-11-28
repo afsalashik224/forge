@@ -26,6 +26,8 @@ import {
   fetchHealthStatus, 
   fetchWorkspaces, 
   fetchRepositories,
+  fetchProgressOverview,
+  fetchCompassRecommendations,
   deleteWorkspace,
   deleteRepository
 } from './services/api';
@@ -57,6 +59,8 @@ export default function App() {
   const [graphVersion, setGraphVersion] = useState(0);
   const [workspaceFocus, setWorkspaceFocus] = useState(null);
   const [libraryRepoFilter, setLibraryRepoFilter] = useState('');
+  const [progressOverview, setProgressOverview] = useState(null);
+  const [compassSummary, setCompassSummary] = useState(null);
 
   const [toast, setToast] = useState({ message: '', type: 'success' });
 
@@ -68,16 +72,27 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const [conceptsData, healthData, workspacesData, repositoriesData] = await Promise.all([
+      const [
+        conceptsData,
+        healthData,
+        workspacesData,
+        repositoriesData,
+        progressData,
+        compassData,
+      ] = await Promise.all([
         fetchConcepts(),
         fetchHealthStatus(),
         fetchWorkspaces().catch(() => []),
         fetchRepositories().catch(() => []),
+        fetchProgressOverview().catch(() => null),
+        fetchCompassRecommendations().catch(() => null),
       ]);
       setConcepts(Array.isArray(conceptsData) ? conceptsData : []);
       setHealthStatus(healthData);
       setWorkspaces(Array.isArray(workspacesData) ? workspacesData : []);
       setRepositories(Array.isArray(repositoriesData) ? repositoriesData : []);
+      setProgressOverview(progressData);
+      setCompassSummary(compassData);
       setGraphVersion((v) => v + 1);
     } catch (err) {
       console.error("App load error:", err);
@@ -162,6 +177,36 @@ export default function App() {
     }
   };
 
+  const handleNavigateRecommendation = (rec) => {
+    if (!rec) return;
+    const target = rec.action_target;
+    if (target === 'graph') {
+      setActiveTab('graph');
+    } else if (target === 'workspaces') {
+      if (rec.entity_type === 'repository' && rec.entity_slug) {
+        handleNavigateToRepository(rec.entity_slug);
+      } else if (rec.entity_type === 'workspace' && rec.entity_slug) {
+        handleNavigateToWorkspace(rec.entity_slug);
+      } else {
+        setActiveTab('workspaces');
+      }
+    } else if (target === 'edit-concept' && rec.entity_slug) {
+      handleEditConceptBySlug(rec.entity_slug);
+    } else if (target === 'create-concept') {
+      setIsCreateModalOpen(true);
+    } else if (target === 'library') {
+      if (rec.entity_type === 'repository' && rec.entity_slug) {
+        handleFilterLibraryByRepo(rec.entity_slug);
+      } else {
+        setActiveTab('library');
+      }
+    } else if (target === 'progress') {
+      setActiveTab('progress');
+    } else {
+      setActiveTab('compass');
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -173,6 +218,7 @@ export default function App() {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         conceptCount={concepts.length}
+        pendingRecommendationsCount={compassSummary?.counts?.active_pending || 0}
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
       />
@@ -193,12 +239,15 @@ export default function App() {
             <KnowledgeWorkspace 
               concepts={concepts}
               healthStatus={healthStatus}
+              progressOverview={progressOverview}
+              compassSummary={compassSummary}
               onSelectConcept={setSelectedConcept}
               onOpenCreateModal={() => setIsCreateModalOpen(true)}
               onEditConcept={setEditingConcept}
               onDeleteConcept={setDeletingConcept}
               setActiveTab={setActiveTab}
               onNavigateFromGraphNode={handleNavigateFromGraphNode}
+              onNavigateRecommendation={handleNavigateRecommendation}
               graphVersion={graphVersion}
               loading={loading}
             />
@@ -252,10 +301,30 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'compass' && <ForgeCompass />}
+          {activeTab === 'compass' && (
+            <ForgeCompass
+              refreshKey={graphVersion}
+              onCompassUpdated={() => {
+                fetchCompassRecommendations({ refresh: false })
+                  .then((d) => setCompassSummary(d))
+                  .catch(() => {});
+              }}
+              onNavigateRecommendation={handleNavigateRecommendation}
+              onOpenCreateConcept={() => setIsCreateModalOpen(true)}
+              onOpenWorkspaces={() => setActiveTab('workspaces')}
+              showToast={showToast}
+            />
+          )}
 
           {activeTab === 'progress' && (
-            <RepositoryProgress conceptsCount={concepts.length} />
+            <RepositoryProgress
+              refreshKey={graphVersion}
+              onOpenCreateConcept={() => setIsCreateModalOpen(true)}
+              onSelectConceptBySlug={handleNavigateConceptBySlug}
+              onOpenGraph={() => setActiveTab('graph')}
+              onNavigateToRepository={handleNavigateToRepository}
+              onNavigateToWorkspaces={() => setActiveTab('workspaces')}
+            />
           )}
 
           {activeTab === 'adrs' && <AdrTracker />}

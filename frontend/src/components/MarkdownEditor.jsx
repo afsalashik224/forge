@@ -73,6 +73,7 @@ export default function MarkdownEditor({ value, onChange, disabled, placeholder 
             borderRight: mode === 'split' ? '1px solid var(--border-color)' : 'none',
           }}>
             <textarea
+              aria-label="Markdown Content"
               value={value || ''}
               onChange={(e) => onChange(e.target.value)}
               disabled={disabled}

@@ -57,8 +57,8 @@ export default function CommandPalette({ isOpen, onClose, onOpen, concepts = [],
     { id: 'library', label: 'Forge Library (Concepts Catalog)', icon: BookOpen },
     { id: 'workspaces', label: 'Workspaces & Repositories', icon: FolderGit2 },
     { id: 'graph', label: 'Knowledge Graph Explorer', icon: Network },
-    { id: 'compass', label: 'Forge Compass (Recommendations Preview)', icon: Compass },
-    { id: 'progress', label: 'Repository Progress (Mastery Preview)', icon: TrendingUp },
+    { id: 'compass', label: 'Forge Compass (Next Actions & Insights)', icon: Compass },
+    { id: 'progress', label: 'Repository Progress (Documentation Metrics)', icon: TrendingUp },
     { id: 'adrs', label: 'Architecture Records (ADR Tracker)', icon: FileCode2 },
   ].filter(p => p.label.toLowerCase().includes(q));
 

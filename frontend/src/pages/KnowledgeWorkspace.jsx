@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Activity, Clock, Plus, Compass, ArrowUpRight } from 'lucide-react';
+import { BookOpen, Activity, Clock, Plus, Compass, ArrowUpRight, TrendingUp, Target } from 'lucide-react';
 import ConceptCard from '../components/ConceptCard';
 import KnowledgeGraphWidget from '../components/KnowledgeGraphWidget';
 import SkeletonCard from '../components/SkeletonCard';
@@ -7,16 +7,22 @@ import SkeletonCard from '../components/SkeletonCard';
 export default function KnowledgeWorkspace({ 
   concepts, 
   healthStatus, 
+  progressOverview = null,
+  compassSummary = null,
   onSelectConcept, 
   onOpenCreateModal, 
   onEditConcept,
   onDeleteConcept,
   setActiveTab,
   onNavigateFromGraphNode,
+  onNavigateRecommendation,
   graphVersion = 0,
   loading
 }) {
   const recentConcepts = concepts.slice(-3).reverse();
+  const overview = progressOverview?.overview || {};
+  const compassCounts = compassSummary?.counts || {};
+  const topRecommendations = (compassSummary?.groups?.active_pending || []).slice(0, 3);
 
   return (
     <div style={{ padding: '28px', maxWidth: '1200px', margin: '0 auto' }}>
@@ -92,25 +98,101 @@ export default function KnowledgeWorkspace({
           </div>
         </div>
 
-        {/* Metric 3 */}
-        <div className="matte-card" style={{ padding: '18px' }}>
+        {/* Metric 3: Live Documentation Coverage */}
+        <div
+          className="matte-card matte-card-interactive"
+          onClick={() => setActiveTab('progress')}
+          style={{ padding: '18px' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <span style={{ fontSize: '0.725rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              REPO DOC COVERAGE
+            </span>
+            <TrendingUp size={16} color="var(--emerald-primary)" />
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: overview.average_documentation_score !== null && overview.average_documentation_score !== undefined ? 'var(--emerald-primary)' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            {overview.average_documentation_score !== null && overview.average_documentation_score !== undefined
+              ? `${overview.average_documentation_score}%`
+              : 'N/A'}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {overview.total_repositories || 0} repos · {overview.well_documented_repositories || 0} well documented
+          </div>
+        </div>
+
+        {/* Metric 4: Live Forge Compass */}
+        <div
+          className="matte-card matte-card-interactive"
+          onClick={() => setActiveTab('compass')}
+          style={{ padding: '18px' }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
             <span style={{ fontSize: '0.725rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
               FORGE COMPASS
             </span>
             <Compass size={16} color="var(--copper-primary)" />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="badge-copper">ROADMAP PREVIEW</span>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+            {compassCounts.active_pending ?? 0}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '10px' }}>
-            Recommendation Engine
+          <div style={{ fontSize: '0.75rem', color: compassCounts.high_priority > 0 ? '#F87171' : 'var(--copper-primary)', marginTop: '4px' }}>
+            {compassCounts.high_priority || 0} high priority action(s)
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Knowledge Graph Widget + Recently Forged */}
+      {/* Main Grid: Top Compass Actions + Knowledge Graph Widget + Recently Forged */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+        {topRecommendations.length > 0 && (
+          <div className="matte-card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Target size={16} color="var(--copper-primary)" />
+                <h2 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Forge Compass — Priority Next Actions
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('compass')}
+                style={{ background: 'transparent', border: 'none', color: 'var(--copper-primary)', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <span>Open Compass ({compassCounts.active_pending || 0})</span>
+                <ArrowUpRight size={14} />
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+              {topRecommendations.map((rec) => (
+                <div
+                  key={rec.id}
+                  onClick={() => onNavigateRecommendation ? onNavigateRecommendation(rec) : setActiveTab('compass')}
+                  className="matte-card-interactive"
+                  style={{
+                    backgroundColor: 'var(--bg-main)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    padding: '12px 14px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span className={rec.priority === 'HIGH' ? 'badge-copper' : 'badge-slate'} style={{ fontSize: '0.65rem' }}>
+                      {rec.priority}
+                    </span>
+                    <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                      {rec.entity_label || rec.category}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    {rec.title}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.45' }}>
+                    {rec.explanation}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <KnowledgeGraphWidget
           refreshKey={graphVersion}
           onOpenGraphExplorer={() => setActiveTab('graph')}
