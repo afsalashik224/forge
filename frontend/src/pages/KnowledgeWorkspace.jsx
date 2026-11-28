@@ -12,6 +12,8 @@ export default function KnowledgeWorkspace({
   onEditConcept,
   onDeleteConcept,
   setActiveTab,
+  onNavigateFromGraphNode,
+  graphVersion = 0,
   loading
 }) {
   const recentConcepts = concepts.slice(-3).reverse();
@@ -109,7 +111,12 @@ export default function KnowledgeWorkspace({
 
       {/* Main Grid: Knowledge Graph Widget + Recently Forged */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-        <KnowledgeGraphWidget />
+        <KnowledgeGraphWidget
+          refreshKey={graphVersion}
+          onOpenGraphExplorer={() => setActiveTab('graph')}
+          onNavigateFromNode={onNavigateFromGraphNode}
+          onOpenCreateModal={onOpenCreateModal}
+        />
 
         {/* Recently Forged Section */}
         <div>

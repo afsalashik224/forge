@@ -62,6 +62,38 @@ def _serialize_concept(concept, detailed=False):
     }
     if detailed:
         payload["content"] = concept.content or ""
+        payload["relationships"] = {
+            "outgoing": [
+                {
+                    "id": rel.id,
+                    "relationship_type": rel.relationship_type,
+                    "description": rel.description or "",
+                    "concept": {
+                        "id": rel.target_concept.id,
+                        "title": rel.target_concept.title,
+                        "slug": rel.target_concept.slug,
+                        "status": rel.target_concept.status,
+                    },
+                }
+                for rel in getattr(concept, "outgoing_relationships", [])
+                if rel.target_concept is not None
+            ],
+            "incoming": [
+                {
+                    "id": rel.id,
+                    "relationship_type": rel.relationship_type,
+                    "description": rel.description or "",
+                    "concept": {
+                        "id": rel.source_concept.id,
+                        "title": rel.source_concept.title,
+                        "slug": rel.source_concept.slug,
+                        "status": rel.source_concept.status,
+                    },
+                }
+                for rel in getattr(concept, "incoming_relationships", [])
+                if rel.source_concept is not None
+            ],
+        }
     return payload
 
 

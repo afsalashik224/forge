@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Folder, 
   GitBranch, 
@@ -24,10 +24,18 @@ export default function WorkspaceManager({
   onDeleteRepository,
   onOpenAssociateConcept,
   onSelectConcept,
+  focusTarget = null,
   loading = false,
 }) {
   const [activeSubTab, setActiveSubTab] = useState('workspaces'); // 'workspaces' | 'repositories'
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (focusTarget) {
+      if (focusTarget.subTab) setActiveSubTab(focusTarget.subTab);
+      if (focusTarget.query !== undefined) setSearchQuery(focusTarget.query);
+    }
+  }, [focusTarget]);
 
   const filteredWorkspaces = workspaces.filter(w => 
     w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

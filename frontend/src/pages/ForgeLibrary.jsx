@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Plus, Grid, List, BookOpen, Edit3, Trash2, Hash, Layers, X, FolderGit2, GitBranch } from 'lucide-react';
 import ConceptCard from '../components/ConceptCard';
 import SkeletonCard from '../components/SkeletonCard';
@@ -23,6 +23,7 @@ export default function ForgeLibrary({
   concepts, 
   workspaces = [],
   repositories = [],
+  initialRepositoryFilter = '',
   onSelectConcept, 
   onOpenCreateModal, 
   onEditConcept, 
@@ -37,6 +38,12 @@ export default function ForgeLibrary({
   const [workspaceFilter, setWorkspaceFilter] = useState('');
   const [repositoryFilter, setRepositoryFilter] = useState('');
   const [viewMode, setViewMode] = useState('grid');
+
+  useEffect(() => {
+    if (initialRepositoryFilter) {
+      setRepositoryFilter(initialRepositoryFilter);
+    }
+  }, [initialRepositoryFilter]);
 
   // Collect all unique tags across concepts
   const allTags = useMemo(() => {

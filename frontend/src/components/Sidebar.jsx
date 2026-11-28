@@ -8,6 +8,7 @@ import {
   Zap, 
   Terminal,
   FolderGit2,
+  Network,
   X
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export default function Sidebar({ activeTab, setActiveTab, conceptCount, isMobil
         { id: 'workspace', label: 'Workspace Overview', icon: LayoutDashboard, live: true },
         { id: 'library', label: 'Forge Library', icon: BookOpen, live: true, count: conceptCount },
         { id: 'workspaces', label: 'Workspaces & Repos', icon: FolderGit2, live: true },
+        { id: 'graph', label: 'Knowledge Graph', icon: Network, live: true },
       ]
     },
     {

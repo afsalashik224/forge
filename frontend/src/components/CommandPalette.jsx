@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, BookOpen, Compass, TrendingUp, FileCode2, LayoutDashboard, FolderGit2, X, ArrowRight } from 'lucide-react';
+import { Search, BookOpen, Compass, TrendingUp, FileCode2, LayoutDashboard, FolderGit2, Network, X, ArrowRight } from 'lucide-react';
 
 export default function CommandPalette({ isOpen, onClose, onOpen, concepts = [], setActiveTab, onSelectConcept }) {
   const [query, setQuery] = useState('');
@@ -56,6 +56,7 @@ export default function CommandPalette({ isOpen, onClose, onOpen, concepts = [],
     { id: 'workspace', label: 'Knowledge Workspace Overview', icon: LayoutDashboard },
     { id: 'library', label: 'Forge Library (Concepts Catalog)', icon: BookOpen },
     { id: 'workspaces', label: 'Workspaces & Repositories', icon: FolderGit2 },
+    { id: 'graph', label: 'Knowledge Graph Explorer', icon: Network },
     { id: 'compass', label: 'Forge Compass (Recommendations Preview)', icon: Compass },
     { id: 'progress', label: 'Repository Progress (Mastery Preview)', icon: TrendingUp },
     { id: 'adrs', label: 'Architecture Records (ADR Tracker)', icon: FileCode2 },

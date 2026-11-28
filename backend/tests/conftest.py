@@ -13,6 +13,8 @@ from app.repositories.workspace_repository import WorkspaceRepository
 from app.services.workspace_service import WorkspaceService
 from app.repositories.repository_repository import RepositoryRepository
 from app.services.repository_service import RepositoryService
+from app.repositories.graph_repository import GraphRepository
+from app.services.graph_service import GraphService
 
 
 @pytest.fixture
@@ -73,3 +75,15 @@ def repo_repository(app):
 def repo_service(repo_repository):
     """A RepositoryService bound to the test repository repository."""
     return RepositoryService(repository=repo_repository)
+
+
+@pytest.fixture
+def graph_repository(app):
+    """A GraphRepository bound to the test app context."""
+    return GraphRepository()
+
+
+@pytest.fixture
+def graph_service(graph_repository):
+    """A GraphService bound to the test graph repository."""
+    return GraphService(repository=graph_repository)

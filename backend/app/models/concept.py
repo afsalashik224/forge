@@ -38,6 +38,22 @@ class Concept(db.Model):
 		back_populates="concepts",
 		lazy="select",
 	)
+
+	outgoing_relationships = db.relationship(
+		"ConceptRelationship",
+		foreign_keys="ConceptRelationship.source_concept_id",
+		back_populates="source_concept",
+		cascade="all, delete-orphan",
+		lazy="select",
+	)
+
+	incoming_relationships = db.relationship(
+		"ConceptRelationship",
+		foreign_keys="ConceptRelationship.target_concept_id",
+		back_populates="target_concept",
+		cascade="all, delete-orphan",
+		lazy="select",
+	)
 	
 	def __repr__(self):
 		return f"<Concept {self.title}>"
