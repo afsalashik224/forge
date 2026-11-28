@@ -470,3 +470,90 @@ export async function deleteRelationship(relationshipId) {
     throw error;
   }
 }
+
+// -----------------------------------------------------------------------------
+// Progress Engine & Forge Compass API (Phase 5)
+// -----------------------------------------------------------------------------
+
+export async function fetchProgressOverview() {
+  try {
+    const res = await fetch('/api/progress/');
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch progress overview:", error);
+    throw error;
+  }
+}
+
+export async function fetchRepositoryProgress(slug) {
+  try {
+    const res = await fetch(`/api/progress/repositories/${encodeURIComponent(slug)}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`Failed to fetch progress for repository '${slug}':`, error);
+    throw error;
+  }
+}
+
+export async function fetchCompassRecommendations(params = {}) {
+  try {
+    const query = new URLSearchParams();
+    if (params.refresh === false) query.set('refresh', 'false');
+    if (params.status) query.set('status', params.status);
+    if (params.priority) query.set('priority', params.priority);
+    if (params.category) query.set('category', params.category);
+    if (params.repository) query.set('repository', params.repository);
+
+    const qs = query.toString();
+    const url = qs ? `/api/compass/?${qs}` : '/api/compass/';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch Forge Compass recommendations:", error);
+    throw error;
+  }
+}
+
+export async function refreshCompassRecommendations() {
+  try {
+    const res = await fetch('/api/compass/refresh', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error("Failed to refresh Compass recommendations:", error);
+    throw error;
+  }
+}
+
+export async function updateRecommendationStatus(recId, status) {
+  try {
+    const res = await fetch(`/api/compass/recommendations/${encodeURIComponent(recId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Server error ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`Failed to update recommendation ${recId}:`, error);
+    throw error;
+  }
+}

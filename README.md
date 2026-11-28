@@ -415,6 +415,8 @@ Nginx Reload
 ```
 
 > **Note:** The EC2 instance is manually started and stopped to conserve AWS credits. The GitHub Actions pipeline requires the instance to be running to complete the build and deployment — if the instance is stopped, the workflow builds and tests but cannot finish deploying to the instance. Full automation (auto-start instance → deploy → auto-stop, triggered by a single command) is planned for a future iteration.
+>
+> For detailed host-side database backup, ordered schema migration (`001`–`005`), rollback behavior, and storage permissions, see [docs/DEPLOYMENT_AND_MIGRATIONS.md](docs/DEPLOYMENT_AND_MIGRATIONS.md).
 
 ---
 
@@ -482,28 +484,24 @@ All growth-related entities ultimately reference a **Concept**, making it the si
 
 # Current Release
 
-## Forge v1.0
+## Forge v1.0 → Phase 5 Implementation
 
 ### ✅ Implemented
 
-- Knowledge Workspace
-- Forge Library
-- Create Concept
-- Concept Reader
-- Command Palette (Ctrl/Cmd + K)
-- Interactive Knowledge Graph (Preview)
-- REST API
-- Dockerized Flask Backend
-- GitHub Actions CI/CD
-- AWS EC2 Deployment
-- Nginx Reverse Proxy
-- Responsive Dashboard
+- Knowledge Workspace (live metrics, priority Compass actions, live Knowledge Graph preview)
+- Forge Library (full-text search, status/category/tag/workspace/repository filters)
+- Rich Knowledge Authoring (Markdown editor with live split preview, GFM, syntax-highlighted code blocks, tags, categories)
+- Concept Reader & Command Palette (`Ctrl/Cmd + K`)
+- Workspace & Repository Management (`/api/workspaces`, `/api/repositories`)
+- Live Knowledge Graph & Relationship Editor (`/api/graph`, interactive SVG explorer, 1–3 hop BFS neighborhood exploration)
+- Repository Progress Engine (`/api/progress`, 5-dimension explainable documentation & graph connectivity metrics)
+- Forge Compass (`/api/compass`, deterministic rule-based recommendations with persistent `PENDING`/`COMPLETED`/`DISMISSED` workflows)
+- Persistent SQLite migrations (`001`–`005`) & safe backup/deployment scripts
+- Dockerized Flask Backend (Gunicorn), GitHub Actions CI/CD, AWS EC2 + Nginx Reverse Proxy
 
 ### Preview Modules
 
-- Forge Compass
-- Repository Progress
-- Architecture Records
+- Architecture Records (ADR Tracker — planned)
 
 ---
 
@@ -533,14 +531,12 @@ Forge follows several engineering principles:
 
 ---
 
-# Known Limitations (v1)
+# Known Limitations
 
-- SQLite database
-- No authentication
-- Preview modules are placeholders
-- Knowledge Graph is static
-- No relationship editor
-- Limited concept metadata
+- SQLite database (single-node persistence)
+- No multi-user authentication or per-user profiles
+- Architecture Records (`AdrTracker`) remains a UI preview
+- Progress metrics measure documentation coverage and graph connectivity, not static source-code analysis
 - Deployment pipeline requires the EC2 instance to be manually running to complete
 
 These are planned improvements for future releases.

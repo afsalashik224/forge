@@ -125,8 +125,18 @@ time.sleep(2)
 
 if res.returncode == 0 and os.path.exists(f"{TEST_DATA_DIR}/forge.db"):
     status, concepts = http_get(f"http://localhost:{PORT}/api/concepts/")
-    passed = (len(concepts) == 4 and all(c["slug"].startswith("original-concept-") for c in concepts))
-    record("Test 2: Running container migration (4 concepts)", passed, f"All {len(concepts)} original concepts survived migration")
+    status_p, progress = http_get(f"http://localhost:{PORT}/api/progress/")
+    status_g, graph = http_get(f"http://localhost:{PORT}/api/graph/")
+    status_c, compass = http_get(f"http://localhost:{PORT}/api/compass/")
+    passed = (
+        len(concepts) == 4
+        and all(c["slug"].startswith("original-concept-") for c in concepts)
+        and status_p == 200
+        and status_g == 200
+        and status_c == 200
+        and graph["stats"]["total_nodes"] == 4
+    )
+    record("Test 2: Running container migration (4 concepts + Phases 0-5 schema)", passed, f"All {len(concepts)} original concepts survived & Phases 0-5 APIs verified")
 else:
     record("Test 2: Running container migration (4 concepts)", False, f"Deploy failed: {res.stderr}")
 
@@ -314,6 +324,57 @@ no_world_write = ((os.stat(db_path).st_mode & 0o002) == 0 and (os.stat(TEST_DATA
 status, concepts = http_get(f"http://localhost:{PORT}/api/concepts/")
 passed = (status == 200 and len(concepts) == 5 and db_perm == "0o664" and no_world_write)
 record("Test 13: Storage permissions & WAL write", passed, f"Write succeeded (5 concepts), db={db_perm}, dir={dir_perm}, world-writable=False")
+
+# ------------------------------------------------------------------------------
+# Test 14: Existing Phase 0 Persistent DB Upgrade (pre-001 -> Phases 0-5)
+# ------------------------------------------------------------------------------
+print("\n--- Test 14: Existing Phase 0 persistent DB upgrade (001-005) ---")
+cleanup()
+os.makedirs(TEST_DATA_DIR, exist_ok=True)
+phase0_db = f"{TEST_DATA_DIR}/forge.db"
+conn = sqlite3.connect(phase0_db)
+conn.execute("""
+    CREATE TABLE concepts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title VARCHAR(200) NOT NULL,
+        slug VARCHAR(200) UNIQUE NOT NULL,
+        summary TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+""")
+for i in range(1, 5):
+    conn.execute(
+        "INSERT INTO concepts (title, slug, summary, status, created_at) "
+        "VALUES (?, ?, ?, 'PUBLISHED', '2026-08-01 10:00:00');",
+        (f"Phase0 Concept {i}", f"phase0-concept-{i}", f"Phase 0 summary {i}"),
+    )
+conn.commit()
+conn.close()
+
+res = run_cmd(f"export FORGE_DATA_DIR={TEST_DATA_DIR} && export FORGE_LEGACY_DB=/nonexistent/forge.db && cd {BASE_DIR} && bash scripts/deploy.sh")
+time.sleep(2)
+
+if res.returncode == 0:
+    status_c, concepts = http_get(f"http://localhost:{PORT}/api/concepts/")
+    status_p, progress = http_get(f"http://localhost:{PORT}/api/progress/")
+    status_k, compass = http_get(f"http://localhost:{PORT}/api/compass/")
+    conn = sqlite3.connect(phase0_db)
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()}
+    conn.close()
+    expected_tables = {
+        "concepts", "workspaces", "repositories",
+        "workspace_repositories", "repository_concepts",
+        "concept_relationships", "compass_recommendations",
+    }
+    passed = (
+        status_c == 200 and len(concepts) == 4
+        and status_p == 200 and status_k == 200
+        and expected_tables.issubset(tables)
+    )
+    record("Test 14: Phase 0 DB upgrade (001-005)", passed, f"Upgraded pre-001 DB to all 7 tables; {len(concepts)} original concepts preserved")
+else:
+    record("Test 14: Phase 0 DB upgrade (001-005)", False, f"Deploy failed: {res.stderr}\n{res.stdout}")
 
 # Final Cleanup
 cleanup()

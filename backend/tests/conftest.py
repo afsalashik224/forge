@@ -15,6 +15,10 @@ from app.repositories.repository_repository import RepositoryRepository
 from app.services.repository_service import RepositoryService
 from app.repositories.graph_repository import GraphRepository
 from app.services.graph_service import GraphService
+from app.repositories.progress_repository import ProgressRepository
+from app.services.progress_service import ProgressService
+from app.repositories.compass_repository import CompassRepository
+from app.services.compass_service import CompassService
 
 
 @pytest.fixture
@@ -87,3 +91,18 @@ def graph_repository(app):
 def graph_service(graph_repository):
     """A GraphService bound to the test graph repository."""
     return GraphService(repository=graph_repository)
+
+
+@pytest.fixture
+def progress_service(app):
+    """A ProgressService bound to the test app context."""
+    return ProgressService(repository=ProgressRepository())
+
+
+@pytest.fixture
+def compass_service(progress_service):
+    """A CompassService bound to the test app context."""
+    return CompassService(
+        compass_repo=CompassRepository(),
+        progress_service=progress_service,
+    )

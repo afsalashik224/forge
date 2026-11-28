@@ -61,12 +61,16 @@ echo "State: persistent_db=$HAS_PERSISTENT_DB, container_exists=$CONTAINER_EXIST
 DEPLOYMENT_SUCCESS=false
 NEW_CONTAINER_STARTED=false
 CONTAINER_SWAPPED=false
+DB_MIGRATED_THIS_RUN=false
+PRE_MIGRATION_BACKUP_PATH=""
+PRE_MIGRATION_RECORD_FILE="$STAGING_DIR/pre_migration_backup_path.txt"
 
 cleanup_and_rollback() {
     local exit_code=$?
     trap - EXIT ERR INT TERM
 
     if [ "$DEPLOYMENT_SUCCESS" = true ]; then
+        rm -rf "$STAGING_DIR" 2>/dev/null || true
         exit 0
     fi
 
@@ -74,6 +78,13 @@ cleanup_and_rollback() {
     echo "========================================================================"
     echo "CRITICAL: Deployment failed or interrupted (code: $exit_code). Initiating rollback..."
     echo "========================================================================"
+
+    # If a failed deployment migrated the existing persistent DB before container failure,
+    # restore the exact pre-migration database snapshot so old container & DB stay consistent.
+    if [ "$DB_MIGRATED_THIS_RUN" = true ] && [ -n "$PRE_MIGRATION_BACKUP_PATH" ] && [ -f "$PRE_MIGRATION_BACKUP_PATH" ]; then
+        echo "Restoring pre-migration database snapshot from: $PRE_MIGRATION_BACKUP_PATH"
+        python3 -c "import sys; sys.path.insert(0, '$FORGE_ROOT/scripts'); from run_migrations import restore_database_backup; restore_database_backup('$PRE_MIGRATION_BACKUP_PATH', '$DATA_DIR/forge.db')" || true
+    fi
 
     # If staging directory was left behind, clean it up
     rm -rf "$STAGING_DIR" 2>/dev/null || true
@@ -102,6 +113,11 @@ cleanup_and_rollback() {
         else
             echo "Previous container restored as '${CONTAINER_NAME}' (kept stopped, matching original state)."
         fi
+    elif [ "$CONTAINER_EXISTS" = true ] && [ "$CONTAINER_WAS_RUNNING" = true ]; then
+        if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+            echo "Restarting existing container '${CONTAINER_NAME}' after pre-swap abort..."
+            docker start "$CONTAINER_NAME" 2>/dev/null || true
+        fi
     fi
 
     echo "Rollback completed. Deployment aborted safely."
@@ -116,7 +132,7 @@ trap cleanup_and_rollback EXIT ERR INT TERM
 if [ "$HAS_PERSISTENT_DB" = true ]; then
     echo "Active persistent database found at: $DATA_DIR/forge.db"
     echo "Creating timestamped pre-deployment backup and verifying integrity..."
-    python3 scripts/backup_db.py "$DATA_DIR/forge.db" "$BACKUP_DIR"
+    python3 "$FORGE_ROOT/scripts/backup_db.py" "$DATA_DIR/forge.db" "$BACKUP_DIR"
     chmod 664 "$DATA_DIR/forge.db" 2>/dev/null || true
     echo "Persistent database verified successfully."
 
@@ -187,14 +203,14 @@ else
         done
 
         echo "Migrating database from container snapshot: $FOUND_CONTAINER_DB"
-        python3 scripts/migrate_to_persistent_storage.py "$FOUND_CONTAINER_DB" "$DATA_DIR"
+        python3 "$FORGE_ROOT/scripts/migrate_to_persistent_storage.py" "$FOUND_CONTAINER_DB" "$DATA_DIR"
         rm -rf "$STAGING_DIR" 2>/dev/null || true
         chmod 664 "$DATA_DIR/forge.db" 2>/dev/null || true
         echo "Container database migration to $DATA_DIR/forge.db completed successfully."
 
     elif [ "$HAS_LEGACY_DB" = true ]; then
         echo "Found host legacy database at $LEGACY_DB. Migrating to $DATA_DIR..."
-        python3 scripts/migrate_to_persistent_storage.py "$LEGACY_DB" "$DATA_DIR"
+        python3 "$FORGE_ROOT/scripts/migrate_to_persistent_storage.py" "$LEGACY_DB" "$DATA_DIR"
         chmod 664 "$DATA_DIR/forge.db" 2>/dev/null || true
         echo "Legacy database migration to $DATA_DIR/forge.db completed successfully."
 
@@ -202,6 +218,22 @@ else
         echo "Fresh install detected: no existing database or container found."
         echo "New database will be initialized in persistent storage at: $DATA_DIR/forge.db"
     fi
+fi
+
+# ------------------------------------------------------------------------------
+# 4b. Ordered Host-Side Schema Upgrade (Migrations 001-005)
+# ------------------------------------------------------------------------------
+# Runs directly on the host so backend/migrations/ stays excluded from Docker image.
+if [ -f "$DATA_DIR/forge.db" ]; then
+    mkdir -p "$STAGING_DIR"
+    echo "Upgrading and verifying schema (migrations 001-005) on $DATA_DIR/forge.db..."
+    python3 "$FORGE_ROOT/scripts/run_migrations.py" "$DATA_DIR/forge.db" "$BACKUP_DIR" --backup-path-file "$PRE_MIGRATION_RECORD_FILE"
+    if [ -f "$PRE_MIGRATION_RECORD_FILE" ]; then
+        PRE_MIGRATION_BACKUP_PATH="$(cat "$PRE_MIGRATION_RECORD_FILE")"
+        DB_MIGRATED_THIS_RUN=true
+    fi
+    chmod 664 "$DATA_DIR"/forge.db* 2>/dev/null || true
+    echo "Database schema upgraded and verified successfully."
 fi
 
 # ------------------------------------------------------------------------------
@@ -214,8 +246,10 @@ docker build -t forge-backend .
 # If fresh install or persistent database file does not exist yet, initialize schema
 if [ ! -f "$DATA_DIR/forge.db" ]; then
     echo "Initializing new database schema in persistent storage at $DATA_DIR/forge.db..."
-    docker run --rm -v "$DATA_DIR:/app/instance" forge-backend python3 -c "import os; from app import create_app; from app.database.db import db; app = create_app(); app.app_context().push(); db.create_all(); os.chmod('/app/instance/forge.db', 0o664)"
+    docker run --rm -v "$DATA_DIR:/app/instance" forge-backend python3 -c "import os; from app import create_app; from app.database.db import db; import app.models; app = create_app(); app.app_context().push(); db.create_all(); os.chmod('/app/instance/forge.db', 0o664)"
     chmod 664 "$DATA_DIR/forge.db" 2>/dev/null || true
+    echo "Verifying fresh database schema completeness..."
+    python3 "$FORGE_ROOT/scripts/run_migrations.py" "$DATA_DIR/forge.db" "$BACKUP_DIR" --verify-only
     echo "Schema initialization complete."
 fi
 
@@ -273,13 +307,15 @@ fi
 
 echo "New container passed health check."
 
-# Verify API data endpoint if persistent database exists
+# Verify Phases 0-5 API endpoints if persistent database exists
 if [ -f "$DATA_DIR/forge.db" ]; then
-    if ! curl -s -f "http://127.0.0.1:${PORT}/api/concepts/" >/dev/null 2>&1; then
-        echo "CRITICAL ERROR: API data endpoint failed verification!"
-        exit 1
-    fi
-    echo "API data endpoint verified successfully."
+    for endpoint in "/api/concepts/" "/api/workspaces/" "/api/repositories/" "/api/graph/" "/api/progress/" "/api/compass/"; do
+        if ! curl -s -f "http://127.0.0.1:${PORT}${endpoint}" >/dev/null 2>&1; then
+            echo "CRITICAL ERROR: API endpoint ${endpoint} failed verification!"
+            exit 1
+        fi
+    done
+    echo "All Phases 0-5 API endpoints verified successfully."
 fi
 
 # Verification passed: mark deployment successful

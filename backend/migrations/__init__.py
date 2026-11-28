@@ -12,4 +12,13 @@ run_migration_003 = migration_003.run_migration
 migration_004 = importlib.import_module("migrations.004_add_concept_relationships")
 run_migration_004 = migration_004.run_migration
 
-__all__ = ["run_migration_001", "run_migration_002", "run_migration_003", "run_migration_004"]
+migration_005 = importlib.import_module("migrations.005_add_compass_recommendations")
+run_migration_005 = migration_005.run_migration
+
+__all__ = [
+    "run_migration_001",
+    "run_migration_002",
+    "run_migration_003",
+    "run_migration_004",
+    "run_migration_005",
+]

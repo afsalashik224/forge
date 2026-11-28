@@ -6,6 +6,8 @@ from app.api.concept_api import concept_api
 from app.api.workspace_api import workspace_api
 from app.api.repository_api import repository_api
 from app.api.graph_api import graph_api
+from app.api.progress_api import progress_api
+from app.api.compass_api import compass_api
 
 
 def create_app(test_config=None):
@@ -22,6 +24,8 @@ def create_app(test_config=None):
     app.register_blueprint(workspace_api)
     app.register_blueprint(repository_api)
     app.register_blueprint(graph_api)
+    app.register_blueprint(progress_api)
+    app.register_blueprint(compass_api)
 
     db.init_app(app)
 

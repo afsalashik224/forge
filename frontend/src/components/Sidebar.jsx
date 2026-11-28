@@ -12,7 +12,14 @@ import {
   X
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab, conceptCount, isMobileOpen, onCloseMobile }) {
+export default function Sidebar({
+  activeTab,
+  setActiveTab,
+  conceptCount,
+  pendingRecommendationsCount = 0,
+  isMobileOpen,
+  onCloseMobile,
+}) {
   const navSections = [
     {
       group: "KNOWLEDGE WORKSPACE",
@@ -26,8 +33,14 @@ export default function Sidebar({ activeTab, setActiveTab, conceptCount, isMobil
     {
       group: "LEARNING JOURNEY & ROADMAP",
       items: [
-        { id: 'compass', label: 'Forge Compass', icon: Compass, preview: 'PREVIEW' },
-        { id: 'progress', label: 'Repository Progress', icon: TrendingUp, preview: 'PREVIEW' },
+        {
+          id: 'compass',
+          label: 'Forge Compass',
+          icon: Compass,
+          live: true,
+          count: pendingRecommendationsCount > 0 ? pendingRecommendationsCount : undefined,
+        },
+        { id: 'progress', label: 'Repository Progress', icon: TrendingUp, live: true },
         { id: 'adrs', label: 'Architecture Records', icon: FileCode2, preview: 'SOON' },
       ]
     }
